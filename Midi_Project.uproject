@@ -1,0 +1,27 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "{AA73564D-47A8-8682-3D54-BBAFA1EB8F1A}",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "Midi_Project",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "MidiAsset",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/aff69119f95d405abbab38236e258c2e"
+		},
+		{
+			"Name": "SoundVisualizations",
+			"Enabled": true
+		}
+	]
+}
