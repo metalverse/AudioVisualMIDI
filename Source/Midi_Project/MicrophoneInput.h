@@ -16,15 +16,14 @@ class MIDI_PROJECT_API AMicrophoneInput : public AActor
 {
 	GENERATED_BODY()
 	
-		//float HammingWindow(float n, int window_N);
-	
 
 public:
-	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") float Volume;
-	unsigned long int fundamental_frequency;
+	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") float volume;
+	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") int fundamental_frequency;
 	int tmpCounter = 0;
 	double pi;
 	float* vector;
+	float const silenceTreshold = 65.f*65.f;
 	bool finished = true;
 	static const int N = 4096;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") int NN = N;
@@ -41,17 +40,4 @@ public:
 	// Called every frame
 	virtual void Tick( float DeltaSeconds ) override;
 
-
-	/*typedef struct
-	{
-		float left_phase;
-		float right_phase;
-	}*/
-	/*UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
-		void SaveStringTextToFile(
-			FString SaveDirectory,
-			FString FileName,
-			FString SaveText
-		);
-	*/
 };
