@@ -28,19 +28,6 @@ using Vamp::HostExt::PluginLoader;
 using Vamp::HostExt::PluginWrapper;
 using Vamp::HostExt::PluginInputDomainAdapter;
 
-/*const VampPluginDescriptor *vampGetPluginDescriptor(unsigned int version,
-	unsigned int index)
-{
-	if (version < 1) return 0;
-
-	switch (index) {
-	case  2: return percussionOnsetAdapter.getDescriptor();
-	default: return 0;
-	}
-}*/
-
-/*PluginLoader *loader = PluginLoader::getInstance();
-PluginLoader::PluginKey key = loader->composePluginKey("vamp-example-plugin.dll", "zerocrossing");*/
 VampPluginHost *host;
 
 // Sets default values
