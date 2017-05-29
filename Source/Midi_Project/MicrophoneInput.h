@@ -40,4 +40,10 @@ public:
 	// Called every frame
 	virtual void Tick( float DeltaSeconds ) override;
 
+	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
+		void SaveStringTextToFile(
+			FString SaveDirectory,
+			FString FileName,
+			FString SaveText
+		);
 };

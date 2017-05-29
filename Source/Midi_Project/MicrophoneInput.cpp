@@ -3,11 +3,45 @@
 #include "Midi_Project.h"
 #include "tools/kiss_fftnd.h"
 #include "MicrophoneInput.h"
+#include "VampPluginHost.h"
+
+//#include "vamp/vamp.h"
+//#include "vamp-sdk/PluginAdapter.h"
+
+/*#include "vamp-plugins/SpectralCentroid.h"
+#include "vamp-plugins/ZeroCrossing.h"
+#include "vamp-plugins/PercussionOnsetDetector.h"
+#include "vamp-plugins/FixedTempoEstimator.h"
+#include "vamp-plugins/AmplitudeFollower.h"
+#include "vamp-plugins/PowerSpectrum.h"*/
+
+#include "vamp-hostsdk/PluginHostAdapter.h"
+#include "vamp-hostsdk/PluginInputDomainAdapter.h"
+#include "vamp-hostsdk/PluginLoader.h"
 
 #define SAMPLE_RATE (44100);
 
+using Vamp::Plugin;
+using Vamp::PluginHostAdapter;
+using Vamp::RealTime;
+using Vamp::HostExt::PluginLoader;
+using Vamp::HostExt::PluginWrapper;
+using Vamp::HostExt::PluginInputDomainAdapter;
 
+/*const VampPluginDescriptor *vampGetPluginDescriptor(unsigned int version,
+	unsigned int index)
+{
+	if (version < 1) return 0;
 
+	switch (index) {
+	case  2: return percussionOnsetAdapter.getDescriptor();
+	default: return 0;
+	}
+}*/
+
+/*PluginLoader *loader = PluginLoader::getInstance();
+PluginLoader::PluginKey key = loader->composePluginKey("vamp-example-plugin.dll", "zerocrossing");*/
+VampPluginHost *host;
 
 // Sets default values
 AMicrophoneInput::AMicrophoneInput()
@@ -16,16 +50,18 @@ AMicrophoneInput::AMicrophoneInput()
 	PrimaryActorTick.bCanEverTick = true;
 	//PrimaryActorTick.bCanEverTick = true;
 	voiceCapture = FVoiceModule::Get().CreateVoiceCapture();
-	voiceCapture->Init(44000, 1);
+	voiceCapture->Init(44000, 1); //wspierane 8000 - 48000Hz
 	voiceCapture->Start();
 	spectrum.Init(0, N / 2);
-
+	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, key.c_str());
+	host = new VampPluginHost(44000, 1024); 
 }
 
 // Called when the game starts or when spawned
 void AMicrophoneInput::BeginPlay()
 {
 	Super::BeginPlay();
+
 
 }
 
@@ -101,14 +137,14 @@ float GetVolume(T* buf, int bufSize) {
 void AMicrophoneInput::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	
 	int maxBytes = 0;
 	uint32 bytesAvailable = 0;
 	EVoiceCaptureState::Type captureState = voiceCapture->GetCaptureState(bytesAvailable);
 	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, EVoiceCaptureState::ToString(captureState));
 	if (captureState == EVoiceCaptureState::Ok && bytesAvailable >= 0)
 	{
-
+		++tmpCounter;
 		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(bytesAvailable).Append(" bytesAvailable"));
 		maxBytes = bytesAvailable;
 		uint8* buf = new uint8[maxBytes];
@@ -123,8 +159,13 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		float* sampleBuf = new float[samples];
 		kiss_fft_cpx in[N], out[N];
 		float tmp = 0;
+		float* xxx = new float[10];
 
-
+		if (tmpCounter == 5) {
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, "Przed wtyczka");
+			host->runPlugin("vamp-example-plugins", "zerocrossing", sampleBuf, samples, xxx);
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, "Po wtyczce");
+		}
 		NormalizeBufValues(buf, sampleBuf, samples);
 		volume = GetVolume(sampleBuf, samples);
 		if (volume > 0.0000f) {
@@ -162,6 +203,25 @@ void AMicrophoneInput::Tick(float DeltaTime)
 
 				fundamental_frequency = (peak_idx * 44000.0f / (1.0f * N));
 				//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::SanitizeFloat(fundamental_frequency).Append(" HZ (fundamental frequency) "));
+				/*if (tmpCounter == 5) {
+					//FString textToSave = "";
+					//FString textToSave2 = "";
+					FString textToSave3 = "";
+					for (uint32 i = 0; i < N/2; i++)
+					{
+						spectrum[i] = sqrt(abs(out[i].r + out[i].i));
+						//textToSave += FString::SanitizeFloat(out[i].r).Append(", ").Append(FString::SanitizeFloat(out[i].i)).Append("; ");
+						////textToSave2 += FString::SanitizeFloat(out[i].r).Append("; ");
+						textToSave3 += FString::SanitizeFloat(in[i].r).Append("; ");
+
+					}
+
+					//AMircophoneInputController::SaveStringTextToFile("D:", "samples.txt", textToSave);
+					////AMicrophoneInput::SaveStringTextToFile("D:", "samples2.txt", textToSave2);
+					AMicrophoneInput::SaveStringTextToFile("D:", "samples3.txt", textToSave3);
+
+				}
+				tmpCounter++;*/
 			}
 			else {
 				fundamental_frequency = 0;
@@ -170,6 +230,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 					spectrum[i] = 0;
 				}
 			}
+
 
 	
 		delete[] sampleBuf;
@@ -187,8 +248,8 @@ void AMicrophoneInput::Tick(float DeltaTime)
 
 //IMPLEMENT_PRIMARY_GAME_MODULE(FDefaultGameModule, portaudio, "portaudio");
 
-/*
-void AMircophoneInputController::SaveStringTextToFile(
+
+void AMicrophoneInput::SaveStringTextToFile(
 FString SaveDirectory,
 FString FileName,
 FString SaveText
@@ -211,4 +272,4 @@ FFileHelper::SaveStringToFile(SaveText, *AbsoluteFilePath);
 }
 }
 }
-*/
+
