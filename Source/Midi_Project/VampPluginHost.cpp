@@ -73,10 +73,11 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 	float *filebuf = new float[blockSize * channels];
 	int blockLeft = inputSize;
 
-	/*if (!plugin->initialise(channels, stepSize, blockSize)) {
+	if (!plugin->initialise(channels, stepSize, blockSize)) {
 		return -1;
 	}
-	do{
+	/*do{
+		finalStepsRemaining = 0;
 		int	count;
 
 		if (currentStep == 0 || blockSize == stepSize) {
@@ -89,7 +90,7 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 			if (count != blockSize) --finalStepsRemaining;
 		}
 		else {
-			memmove(inputBuffer, inputBuffer + (stepSize * channels), overlapSize * channels * sizeof(float));
+			//memmove(inputBuffer, inputBuffer + (stepSize * channels), overlapSize * channels * sizeof(float));
 			if (blockLeft >= stepSize) {
 				count = stepSize;
 				blockLeft -= stepSize;
@@ -101,7 +102,6 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 			count += overlapSize;
 		}
 
-		//count = sf_readf_float(sndfile, filebuf, blockSize)) < 0) {
 		float **plugbuf = new float*[channels];
 		for (int c = 0; c < channels; ++c) {
 			int j = 0;
@@ -115,8 +115,8 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 			}
 		}
 
-		Plugin::OutputList outputs = plugin->getOutputDescriptors();
-		Plugin::OutputDescriptor od;
+		//Plugin::OutputList outputs = plugin->getOutputDescriptors();
+		//Plugin::OutputDescriptor od;
 		Plugin::FeatureSet features;
 
 		/*RealTime rt;

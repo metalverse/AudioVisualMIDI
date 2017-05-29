@@ -150,7 +150,8 @@ void AMicrophoneInput::Tick(float DeltaTime)
 
 		if (tmpCounter == 5) {
 			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, "Przed wtyczka");
-			host->runPlugin("vamp-example-plugins", "zerocrossing", sampleBuf, samples, xxx);
+			int x = host->runPlugin("vamp-example-plugins", "zerocrossing", sampleBuf, samples, xxx);
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(x));
 			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, "Po wtyczce");
 		}
 		NormalizeBufValues(buf, sampleBuf, samples);
@@ -221,6 +222,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 
 	
 		delete[] sampleBuf;
+		delete[] xxx;
 		}
 
 
