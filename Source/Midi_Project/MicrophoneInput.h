@@ -30,6 +30,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") TArray<float> spectrum;
 
 	TSharedPtr<class IVoiceCapture> voiceCapture;
+	TSharedPtr<class VampPluginHost> vampHost;
 
 	// Sets default values for this actor's properties
 	AMicrophoneInput();

@@ -146,16 +146,11 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		float* sampleBuf = new float[samples];
 		kiss_fft_cpx in[N], out[N];
 		float tmp = 0;
-		float* xxx = new float[10];
+		//float* xxx = new float[10];
 
-		if (tmpCounter == 5) {
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, "Przed wtyczka");
-			int x = host->runPlugin("vamp-example-plugins", "zerocrossing", sampleBuf, samples, xxx);
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(x));
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, "Po wtyczce");
-		}
 		NormalizeBufValues(buf, sampleBuf, samples);
 		volume = GetVolume(sampleBuf, samples);
+
 		if (volume > 0.0000f) {
 			for (uint32 i = 0; i < samples; i++) {
 				if (i < N) {
@@ -164,6 +159,13 @@ void AMicrophoneInput::Tick(float DeltaTime)
 					tmp += sampleBuf[i] * sampleBuf[i];
 				}
 			}
+			//////// HOST /////////////////////
+			host->runPlugin("vamp-example-plugins", "zerocrossing", sampleBuf, samples, sampleBuf);
+			const Plugin::Feature &f = host->features.at(0).at(0);
+			for (unsigned int i = 0; i < f.values.size(); ++i) {
+				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Green, FString::SanitizeFloat(f.values[i]));
+			}
+			///////////////////////////////////
 			tmp = tmp / samples;
 			tmp = FMath::Sqrt(tmp);
 			volume = 20 * log10f(tmp) + 80;
@@ -188,8 +190,9 @@ void AMicrophoneInput::Tick(float DeltaTime)
 					spectrum[i] = sqrt(abs(out[i].r + out[i].i));
 					if (spectrum[i] > peak) peak_idx = i, peak = spectrum[i];
 				}
-
 				fundamental_frequency = (peak_idx * 44000.0f / (1.0f * N));
+				UE_LOG(LogTemp, Log, TEXT("My value: %d"), fundamental_frequency);
+
 				//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::SanitizeFloat(fundamental_frequency).Append(" HZ (fundamental frequency) "));
 				/*if (tmpCounter == 5) {
 					//FString textToSave = "";
@@ -220,9 +223,10 @@ void AMicrophoneInput::Tick(float DeltaTime)
 			}
 
 
-	
+		
+
 		delete[] sampleBuf;
-		delete[] xxx;
+		//delete[] xxx;
 		}
 
 

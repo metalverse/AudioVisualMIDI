@@ -55,10 +55,10 @@ private:
 	int blockSize;
 	int stepSize;
 	int overlapSize;
-	PluginLoader *loader;
-	Plugin *plugin;
+	PluginLoader *loader2;
+	Plugin *plugin2;
 public:
-
+	Plugin::FeatureSet features;
 	VampPluginHost(float, int);
 	~VampPluginHost();
 	void printFeatures(int, int,

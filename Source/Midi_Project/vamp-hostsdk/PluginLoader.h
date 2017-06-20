@@ -77,7 +77,7 @@ class PluginLoader
 public:
     /**
      * Obtain a pointer to the singleton instance of PluginLoader.
-     * Use this to obtain your loader object.
+     * Use this to obtain your loader2 object.
      */
     static PluginLoader *getInstance();
 
@@ -195,7 +195,7 @@ public:
      * 
      * See PluginInputDomainAdapter, PluginChannelAdapter and
      * PluginBufferingAdapter for more details of the classes that the
-     * loader may use if these flags are set.
+     * loader2 may use if these flags are set.
      */
     enum AdapterFlags {
 

@@ -2,37 +2,35 @@
 
 #include "Midi_Project.h"
 #include "VampPluginHost.h"
-
-
-
+#include <iostream>
 
 
 VampPluginHost::VampPluginHost(float sR, int bSize)
 {
 	sampleRate = sR;
-	loader = PluginLoader::getInstance();
-	PluginLoader::PluginKey key = loader->composePluginKey("vamp-example-plugins", "zerocrossing");
-	plugin = loader->loadPlugin(key, 44100.f, PluginLoader::ADAPT_ALL_SAFE);
+	loader2 = PluginLoader::getInstance();
+	PluginLoader::PluginKey key = loader2->composePluginKey("vamp-example-plugins", "zerocrossing");
+	plugin2 = loader2->loadPlugin(key, sR, PluginLoader::ADAPT_ALL_SAFE);
 	vector<string> path = PluginHostAdapter::getPluginPath();
-	if(path.size() > 0) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, path[0].c_str());
-	if (!plugin) {
+	/*if(path.size() > 0) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, path[0].c_str());
+	if (!plugin2) {
 		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, "BLAD WCZYTYWANIA WTYCZKI");
 	}
 	else {
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, plugin->getIdentifier().c_str());
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, plugin2->getIdentifier().c_str());
 		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, "Wtyczka wczytana!");
-	}
+	}*/
 
-	blockSize = plugin->getPreferredBlockSize();
-	stepSize = plugin->getPreferredStepSize();
+	blockSize = plugin2->getPreferredBlockSize();
+	stepSize = plugin2->getPreferredStepSize();
 
-	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(blockSize).Append(" (block Size)"));
-	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(stepSize).Append(" (step Size)"));
+	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(blockSize).Append(" (block Size)"));
+	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(stepSize).Append(" (step Size)"));
 	if (blockSize == 0) {
 		blockSize = bSize;
 	}
 	if (stepSize == 0) {
-		if (plugin->getInputDomain() == Plugin::FrequencyDomain) {
+		if (plugin2->getInputDomain() == Plugin::FrequencyDomain) {
 			stepSize = blockSize / 2;
 		}
 		else {
@@ -41,7 +39,7 @@ VampPluginHost::VampPluginHost(float sR, int bSize)
 	}
 	else if (stepSize > blockSize) {
 		//cerr << "WARNING: stepSize " << stepSize << " > blockSize " << blockSize << ", resetting blockSize to ";
-		if (plugin->getInputDomain() == Plugin::FrequencyDomain) {
+		if (plugin2->getInputDomain() == Plugin::FrequencyDomain) {
 			blockSize = stepSize * 2;
 		}
 		else {
@@ -50,8 +48,8 @@ VampPluginHost::VampPluginHost(float sR, int bSize)
 		cerr << blockSize << endl;
 	}
 	overlapSize = blockSize - stepSize;
-	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(blockSize).Append(" (block Size)"));
-	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(stepSize).Append(" (step Size)"));
+	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(blockSize).Append(" (block Size)"));
+	//sGEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(stepSize).Append(" (step Size)"));*/
 }
 
 VampPluginHost::~VampPluginHost(){}
@@ -59,7 +57,6 @@ VampPluginHost::~VampPluginHost(){}
 /* -*- c-basic-offset: 4 indent-tabs-mode: nil -*-  vi:set ts=8 sts=4 sw=4: */
 
 using namespace std;
-
 
 int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int inputSize, float *outputBuffer)
 {
@@ -73,10 +70,10 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 	float *filebuf = new float[blockSize * channels];
 	int blockLeft = inputSize;
 
-	if (!plugin->initialise(channels, stepSize, blockSize)) {
+	if (!plugin2->initialise(channels, stepSize, blockSize)) {
 		return -1;
 	}
-	/*do{
+	do{
 		finalStepsRemaining = 0;
 		int	count;
 
@@ -90,7 +87,7 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 			if (count != blockSize) --finalStepsRemaining;
 		}
 		else {
-			//memmove(inputBuffer, inputBuffer + (stepSize * channels), overlapSize * channels * sizeof(float));
+			memmove(inputBuffer, inputBuffer + (stepSize * channels), overlapSize * channels * sizeof(float));
 			if (blockLeft >= stepSize) {
 				count = stepSize;
 				blockLeft -= stepSize;
@@ -103,10 +100,13 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 		}
 
 		float **plugbuf = new float*[channels];
+		for (int c = 0; c < channels; ++c) plugbuf[c] = new float[blockSize + 2];
+
 		for (int c = 0; c < channels; ++c) {
 			int j = 0;
 			while (j < count) {
-				plugbuf[c][j] = inputBuffer[j];// 0;//filebuf[j * sfinfo.channels + c];
+				plugbuf[c][j] = inputBuffer[j+c];// 0;//filebuf[j * sfinfo.channels + c];
+				//UE_LOG(LogTemp, Log, TEXT("inputBuffer: %f"), plugbuf[c][j]);
 				++j;
 			}
 			while (j < blockSize) {
@@ -114,27 +114,29 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 				++j;
 			}
 		}
-
+		
 		//Plugin::OutputList outputs = plugin->getOutputDescriptors();
 		//Plugin::OutputDescriptor od;
-		Plugin::FeatureSet features;
+		
 
-		/*RealTime rt;
+		RealTime rt;
 
 		rt = RealTime::frame2RealTime(currentStep * stepSize, sampleRate);
 
-		features = plugin->process(plugbuf, rt);
+		features = plugin2->process(plugbuf, rt);
 
 		const Plugin::Feature &f = features.at(0).at(0);
 
 		for (unsigned int i = 0; i < f.values.size(); ++i) {
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Green, FString::SanitizeFloat(f.values[i]));
+			string sth = std::to_string(f.values[i]);
+			UE_LOG(LogTemp, Log, TEXT("Value: %f"), f.values[i]);
+			//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Green, FString::SanitizeFloat(f.values[i]));
 		}
-		//delete plugbuf;
+		delete plugbuf;
 
 
 		++currentStep;
-	} while (finalStepsRemaining > 0);*/
+	} while (finalStepsRemaining > 0);
 	return 0;
 }
 
