@@ -15,12 +15,10 @@ public class Midi_Project : ModuleRules
 		PrivateDependencyModuleNames.AddRange(new string[] { "OnlineSubsystem", "OnlineSubsystemUtils", "Voice" });
 
         PublicIncludePaths.Add(Path.Combine(ThirdPartyPath, "vamp-plugins", "Includes"));
-        //PublicDelayLoadDLLs.Add("portaudio_x64.dll");
-        //PublicDelayLoadDLLs.Add("vamp-example-plugins_x64.dll");
-        PublicDelayLoadDLLs.Add("vamp-example-plugins.dll");
 
-        //PublicAdditionalLibraries.Add(Path.Combine(ThirdPartyPath, "/portaudio/", "portaudio_x64.lib"));
-        PublicAdditionalLibraries.Add(Path.Combine(ThirdPartyPath, "vamp-plugins", "VampExamplePlugins.lib"));
+        //PublicDelayLoadDLLs.Add("vamp-example-plugins.dll");
+
+        //PublicAdditionalLibraries.Add(Path.Combine(ThirdPartyPath, "vamp-plugins", "VampExamplePlugins.lib"));
         PublicAdditionalLibraries.Add(Path.Combine(ThirdPartyPath, "vamp-plugins", "VampHostSDK.lib")); 
         //LoadPortAudio(Target);
         //LoadVampPlugins(Target);

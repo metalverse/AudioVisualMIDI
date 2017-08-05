@@ -19,6 +19,8 @@
 #include "vamp-hostsdk/PluginInputDomainAdapter.h"
 #include "vamp-hostsdk/PluginLoader.h"
 
+
+
 #define SAMPLE_RATE (44100);
 
 using Vamp::Plugin;
@@ -41,7 +43,8 @@ AMicrophoneInput::AMicrophoneInput()
 	voiceCapture->Start();
 	spectrum.Init(0, N / 2);
 	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, key.c_str());
-	host = new VampPluginHost(44000, 1024); 
+	host = new VampPluginHost(44000, 1024);
+	tracker = new PitchTracker();
 }
 
 // Called when the game starts or when spawned
@@ -192,6 +195,9 @@ void AMicrophoneInput::Tick(float DeltaTime)
 				}
 				fundamental_frequency = (peak_idx * 44000.0f / (1.0f * N));
 				UE_LOG(LogTemp, Log, TEXT("My value: %d"), fundamental_frequency);
+				if (!tracker->trackNewNote(fundamental_frequency)) {
+					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
+				}
 
 				//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::SanitizeFloat(fundamental_frequency).Append(" HZ (fundamental frequency) "));
 				/*if (tmpCounter == 5) {

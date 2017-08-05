@@ -7,7 +7,9 @@
 #include "OnlineSubsystemUtils.h"
 #include <cmath>
 #include "CoreMisc.h"
+#include "PitchTracker.h"
 #include "MicrophoneInput.generated.h"
+
 
 
 
@@ -31,6 +33,7 @@ public:
 
 	TSharedPtr<class IVoiceCapture> voiceCapture;
 	TSharedPtr<class VampPluginHost> vampHost;
+	PitchTracker* tracker;
 
 	// Sets default values for this actor's properties
 	AMicrophoneInput();

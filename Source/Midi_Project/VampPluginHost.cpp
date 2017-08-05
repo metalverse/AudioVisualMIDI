@@ -23,9 +23,7 @@ VampPluginHost::VampPluginHost(float sR, int bSize)
 
 	blockSize = plugin2->getPreferredBlockSize();
 	stepSize = plugin2->getPreferredStepSize();
-
-	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(blockSize).Append(" (block Size)"));
-	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(stepSize).Append(" (step Size)"));
+	
 	if (blockSize == 0) {
 		blockSize = bSize;
 	}
@@ -48,8 +46,8 @@ VampPluginHost::VampPluginHost(float sR, int bSize)
 		cerr << blockSize << endl;
 	}
 	overlapSize = blockSize - stepSize;
-	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(blockSize).Append(" (block Size)"));
-	//sGEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(stepSize).Append(" (step Size)"));*/
+	UE_LOG(LogTemp, Log, TEXT("Block size: %d"), blockSize);
+	UE_LOG(LogTemp, Log, TEXT("Step size: %d"), stepSize);
 }
 
 VampPluginHost::~VampPluginHost(){}
@@ -60,9 +58,6 @@ using namespace std;
 
 int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int inputSize, float *outputBuffer)
 {
-	//PluginLoader *loader = PluginLoader::getInstance();
-
-	//PluginLoader::PluginKey key = loader->composePluginKey(soname, id);
 	
 	int finalStepsRemaining = max(1, (blockSize / stepSize) - 1);
 	int currentStep = 0;
@@ -130,7 +125,6 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 		for (unsigned int i = 0; i < f.values.size(); ++i) {
 			string sth = std::to_string(f.values[i]);
 			UE_LOG(LogTemp, Log, TEXT("Value: %f"), f.values[i]);
-			//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Green, FString::SanitizeFloat(f.values[i]));
 		}
 		delete plugbuf;
 
