@@ -44,8 +44,14 @@ AMicrophoneInput::AMicrophoneInput()
 	spectrum.Init(0, N / 2);
 	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, key.c_str());
 	host = new VampPluginHost(44000, 1024);
-	tracker = new PitchTracker();
+	tracker = new USimplePitchTracker();
 }
+
+AMicrophoneInput::~AMicrophoneInput()
+{
+	delete tracker;
+}
+
 
 // Called when the game starts or when spawned
 void AMicrophoneInput::BeginPlay()
@@ -149,7 +155,6 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		float* sampleBuf = new float[samples];
 		kiss_fft_cpx in[N], out[N];
 		float tmp = 0;
-		//float* xxx = new float[10];
 
 		NormalizeBufValues(buf, sampleBuf, samples);
 		volume = GetVolume(sampleBuf, samples);
@@ -198,27 +203,9 @@ void AMicrophoneInput::Tick(float DeltaTime)
 				if (!tracker->trackNewNote(fundamental_frequency)) {
 					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
 				}
-
-				//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::SanitizeFloat(fundamental_frequency).Append(" HZ (fundamental frequency) "));
-				/*if (tmpCounter == 5) {
-					//FString textToSave = "";
-					//FString textToSave2 = "";
-					FString textToSave3 = "";
-					for (uint32 i = 0; i < N/2; i++)
-					{
-						spectrum[i] = sqrt(abs(out[i].r + out[i].i));
-						//textToSave += FString::SanitizeFloat(out[i].r).Append(", ").Append(FString::SanitizeFloat(out[i].i)).Append("; ");
-						////textToSave2 += FString::SanitizeFloat(out[i].r).Append("; ");
-						textToSave3 += FString::SanitizeFloat(in[i].r).Append("; ");
-
-					}
-
-					//AMircophoneInputController::SaveStringTextToFile("D:", "samples.txt", textToSave);
-					////AMicrophoneInput::SaveStringTextToFile("D:", "samples2.txt", textToSave2);
-					AMicrophoneInput::SaveStringTextToFile("D:", "samples3.txt", textToSave3);
-
+				else {
+					currentPitch = tracker->lastTrackedNote->getName().c_str();
 				}
-				tmpCounter++;*/
 			}
 			else {
 				fundamental_frequency = 0;
@@ -228,11 +215,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 				}
 			}
 
-
-		
-
 		delete[] sampleBuf;
-		//delete[] xxx;
 		}
 
 

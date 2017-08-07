@@ -10,12 +10,13 @@ public:
 	PitchTracker();
 	~PitchTracker();
 	bool trackNewNote(float freq);
+	Pitch lastTrackedNote;
 
 private:
-	static const int octavesToRecognize = 7;
+	static const int octavesToRecognize = 9;
 	static const int notesToRecognize = octavesToRecognize * 12;
-	const double freqMultiplier = 1.05946309436;
+	const double freqHalfToneMultiplier = 1.05946309436;
 	Pitch pitchTable[notesToRecognize];
 	void initPitchTable();
-	int findPitchByFrequency(int left, int right, int freqLeft, int freqRight);
+	int findPitchByFrequency(int left, int right, int freq);
 };

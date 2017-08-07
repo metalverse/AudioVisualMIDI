@@ -10,6 +10,7 @@ using namespace std;
 PitchTracker::PitchTracker()
 {
 	initPitchTable();
+	lastTrackedNote = Pitch();
 }
 
 PitchTracker::~PitchTracker()
@@ -23,12 +24,15 @@ bool PitchTracker::trackNewNote(float freq)
 	} else {
 		int left = 0;
 		int right = notesToRecognize - 1;
-		float freqLeft = freq - freq * (freqMultiplier / 2);
-		float freqRight = freq + freq * (freqMultiplier / 2);
-		int noteIndex = findPitchByFrequency(left, right, freqLeft, freqRight);
+
+		UE_LOG(LogTemp, Log, TEXT("FREQ: %f"), freq);
+
+		int noteIndex = findPitchByFrequency(left, right, freq);
 		if (noteIndex != -1) {
-			FString trackedNote = FString(pitchTable[noteIndex].getName().c_str());
-			UE_LOG(LogTemp, Log, TEXT("TRACKED NOTE: %s"), *trackedNote);
+			FString noteName = FString(pitchTable[noteIndex].getName().c_str());
+			lastTrackedNote = pitchTable[noteIndex];
+			UE_LOG(LogTemp, Log, TEXT("TRACKED NOTE: %s"), *noteName);
+			UE_LOG(LogTemp, Log, TEXT("FREQ: %f"), pitchTable[noteIndex].getFrequency());
 			return true;
 		}
 		return false;
@@ -37,37 +41,41 @@ bool PitchTracker::trackNewNote(float freq)
 
 void PitchTracker::initPitchTable()
 {
-	double noteFreq = 16.3516;
+	float noteFreq = 16.3516;
 	string toneNames[12] = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","H"};
-	for (int i = 0; i < notesToRecognize; i++) {
-		for (int octave = 0; octave < octavesToRecognize; octave++) {
-			string name = toneNames[i % 12] + to_string(octave);
-			pitchTable[i] = Pitch(name, noteFreq, octave);
-			noteFreq *= freqMultiplier;
+	for (int octave = 0; octave < octavesToRecognize; octave++) {
+		for (int note = 0; note < 12; note++) {
+			string name = toneNames[note] + to_string(octave);
+			pitchTable[octave * 12 + note] = Pitch(name, noteFreq, octave);
 			FString test = FString(name.c_str());
 			float test2 = noteFreq;
 			UE_LOG(LogTemp, Log, TEXT("My note: %s"), *test);
-			UE_LOG(LogTemp, Log, TEXT("My note: %f"), test2);
+			UE_LOG(LogTemp, Log, TEXT("My note: %f"), noteFreq);
+			noteFreq *= freqHalfToneMultiplier;
 		}
 	}
 }
 
-int PitchTracker::findPitchByFrequency(int left, int right, int freqLeft, int freqRight)
+int PitchTracker::findPitchByFrequency(int left, int right, int freq)
 {
 	if (left > right) {
 		return -1;
 	}
-
 	int middle = (left + right) / 2;
+	float tmpFreq = pitchTable[middle].getFrequency();
+	float freqLeft = (tmpFreq + tmpFreq * (1.0 / freqHalfToneMultiplier)) / 2;
+	float freqRight = (tmpFreq + tmpFreq * freqHalfToneMultiplier) / 2;
 
-	if (freqLeft < pitchTable[middle].getFrequency() && freqRight > pitchTable[middle].getFrequency()) {
+	if (freq > freqLeft && freq < freqRight) {
+		UE_LOG(LogTemp, Log, TEXT("FREQ L: %f"), freqLeft);
+		UE_LOG(LogTemp, Log, TEXT("FREQ R: %f"), freqRight);
 		return middle;
 	}
-	if (freqLeft < pitchTable[middle].getFrequency()) {
-		return findPitchByFrequency(left, middle - 1, freqLeft, freqRight);
+	if (freq < tmpFreq) {
+		return findPitchByFrequency(left, middle - 1, freq);
 	}
 	else {
-		return findPitchByFrequency(middle + 1, right, freqLeft, freqRight);
+		return findPitchByFrequency(middle + 1, right, freq);
 	}
 	return -1;
 }

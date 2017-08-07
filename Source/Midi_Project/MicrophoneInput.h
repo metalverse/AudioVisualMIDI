@@ -7,13 +7,14 @@
 #include "OnlineSubsystemUtils.h"
 #include <cmath>
 #include "CoreMisc.h"
-#include "PitchTracker.h"
+#include "SimplePitchTracker.h"
+#include "SimplePitch.h"
 #include "MicrophoneInput.generated.h"
 
 
 
 
-UCLASS()
+UCLASS(Blueprintable)
 class MIDI_PROJECT_API AMicrophoneInput : public AActor
 {
 	GENERATED_BODY()
@@ -22,26 +23,19 @@ class MIDI_PROJECT_API AMicrophoneInput : public AActor
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") float volume;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") int fundamental_frequency;
-	int tmpCounter = 0;
-	double pi;
-	float* vector;
-	float const silenceTreshold = 65.f*65.f;
-	bool finished = true;
+	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") FString currentPitch;
 	static const int N = 4096;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") int NN = N;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") TArray<float> spectrum;
+	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") TArray<USimplePitch*> trackedPitches;
 
 	TSharedPtr<class IVoiceCapture> voiceCapture;
 	TSharedPtr<class VampPluginHost> vampHost;
-	PitchTracker* tracker;
+	USimplePitchTracker* tracker;
 
-	// Sets default values for this actor's properties
 	AMicrophoneInput();
-
-	// Called when the game starts or when spawned
+	~AMicrophoneInput();
 	virtual void BeginPlay() override;
-	
-	// Called every frame
 	virtual void Tick( float DeltaSeconds ) override;
 
 	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
@@ -50,4 +44,11 @@ public:
 			FString FileName,
 			FString SaveText
 		);
+
+private:
+	int tmpCounter = 0;
+	double pi;
+	float* vector;
+	float const silenceTreshold = 65.f*65.f;
+	bool finished = true;
 };
