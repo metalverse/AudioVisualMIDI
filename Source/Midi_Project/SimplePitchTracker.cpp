@@ -8,25 +8,29 @@ using namespace std;
 
 USimplePitchTracker::USimplePitchTracker(const FObjectInitializer& ObjectInitializer)
 {
-	initPitchTable();
-	lastTrackedNote = new SimplePitch();
+	//pitchTable.Init(ObjectInitializer.CreateDefaultSubobject<USimplePitch>(this, TEXT("NewPitch")), notesToRecognize);
+	initPitchTable(ObjectInitializer);
+	lastTrackedNote = ObjectInitializer.CreateDefaultSubobject<USimplePitch>(this, TEXT("lastTrackedPitch"));
+	/*for (int i = 0; i < notesToRecognize; i++) {
+		UE_LOG(LogTemp, Log, TEXT("My note FREQ: %f"), pitchTable[i]->getFrequency());
+	}*/
 }
 
 USimplePitchTracker::~USimplePitchTracker()
 {
-	delete lastTrackedNote;
-	delete [] pitchTable;
 }
 
-void USimplePitchTracker::initPitchTable()
+void USimplePitchTracker::initPitchTable(const FObjectInitializer& ObjectInitializer)
 {
-	pitchTable = new SimplePitch*[notesToRecognize];
 	float noteFreq = 16.3516;
 	string toneNames[12] = { "C","C#","D","D#","E","F","F#","G","G#","A","A#","H" };
 	for (int octave = 0; octave < octavesToRecognize; octave++) {
 		for (int note = 0; note < 12; note++) {
 			string name = toneNames[note] + to_string(octave);
-			pitchTable[octave * 12 + note] = new SimplePitch(name, noteFreq, octave);
+			FName name2 = name.c_str();
+			USimplePitch* pitch = ObjectInitializer.CreateDefaultSubobject<USimplePitch>(this, name2);
+			pitch->setParams(name, noteFreq, octave, 0);
+			pitchTable.Add(pitch);
 			FString test = FString(name.c_str());
 			float test2 = noteFreq;
 			UE_LOG(LogTemp, Log, TEXT("My note: %s"), *test);
@@ -36,9 +40,17 @@ void USimplePitchTracker::initPitchTable()
 	}
 }
 
+
 bool USimplePitchTracker::trackNewNote(float freq)
 {
+	for (int i = 0; i < notesToRecognize; i++) {
+		UE_LOG(LogTemp, Log, TEXT("My note FREQ+++: %f"), pitchTable[i]->getFrequency());
+	}
 	if (freq > pitchTable[notesToRecognize - 1]->getFrequency() || freq < pitchTable[0]->getFrequency()) {
+		UE_LOG(LogTemp, Log, TEXT("STH WENT WRONG"));
+		UE_LOG(LogTemp, Log, TEXT("MAX: %f "), pitchTable[notesToRecognize - 1]->getFrequency());
+		UE_LOG(LogTemp, Log, TEXT("MIN: %f "), pitchTable[0]->getFrequency());
+		UE_LOG(LogTemp, Log, TEXT("FREQ: %f "), freq);
 		return false;
 	}
 	else {
