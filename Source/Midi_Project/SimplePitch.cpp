@@ -3,32 +3,32 @@
 #include "Midi_Project.h"
 #include "SimplePitch.h"
 
-USimplePitch::USimplePitch()
+SimplePitch::SimplePitch() 
 {
-}
+} 
 
-USimplePitch::USimplePitch(float freq) : frequency(freq)
+SimplePitch::SimplePitch(float freq) : frequency(freq)
 {
 	name = "undefined";
 	octave = -1;
 	time = 0;
 }
 
-USimplePitch::USimplePitch(string name, float freq) : name(name), frequency(freq)
+SimplePitch::SimplePitch(string name, float freq) : name(name), frequency(freq)
 {
 	octave = -1;
 	time = 0;
 }
 
-USimplePitch::USimplePitch(string name, float freq, int octave) : name(name), frequency(freq), octave(octave)
+SimplePitch::SimplePitch(string name, float freq, int octave) : name(name), frequency(freq), octave(octave)
 {
 	time = 0;
 }
 
-USimplePitch::USimplePitch(string name, float freq, int octave, int time) : name(name), frequency(freq), octave(octave), time(time)
+SimplePitch::SimplePitch(string name, float freq, int octave, int time) : name(name), frequency(freq), octave(octave), time(time)
 {
 }
 
-USimplePitch::~USimplePitch()
+SimplePitch::~SimplePitch()
 {
 }

@@ -4,22 +4,21 @@
 
 #include <string>
 #include "Object.h"
-#include "SimplePitch.generated.h"
+//#include "SimplePitch.generated.h"
 
 using namespace std;
 
-UCLASS()
-class MIDI_PROJECT_API USimplePitch : public UObject
+
+class MIDI_PROJECT_API SimplePitch
 {
-	GENERATED_BODY()
 	
 public:
-	USimplePitch();
-	USimplePitch(float freq);
-	USimplePitch(string name, float freq);
-	USimplePitch(string name, float freq, int octave);
-	USimplePitch(string name, float freq, int octave, int time);
-	~USimplePitch();
+	SimplePitch();
+	SimplePitch(float freq);
+	SimplePitch(string name, float freq);
+	SimplePitch(string name, float freq, int octave);
+	SimplePitch(string name, float freq, int octave, int time);
+	~SimplePitch();
 	string getName() { return name; };
 	float getFrequency() { return frequency; };
 	int getOctave() { return octave; };

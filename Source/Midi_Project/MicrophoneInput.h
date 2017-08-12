@@ -24,16 +24,16 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") float volume;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") int fundamental_frequency;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") FString currentPitch;
-	static const int N = 4096;
-	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") int NN = N;
+	//UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") int N = 4096;
+	
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") TArray<float> spectrum;
-	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") TArray<USimplePitch*> trackedPitches;
+	//UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") TArray<USimplePitch*> trackedPitches;
 
 	TSharedPtr<class IVoiceCapture> voiceCapture;
 	TSharedPtr<class VampPluginHost> vampHost;
-	USimplePitchTracker* tracker;
+	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") USimplePitchTracker* tracker;
 
-	AMicrophoneInput();
+	AMicrophoneInput(const FObjectInitializer& ObjectInitializer);
 	~AMicrophoneInput();
 	virtual void BeginPlay() override;
 	virtual void Tick( float DeltaSeconds ) override;
@@ -47,8 +47,9 @@ public:
 
 private:
 	int tmpCounter = 0;
-	double pi;
+	//double pi;
 	float* vector;
 	float const silenceTreshold = 65.f*65.f;
 	bool finished = true;
+	static const unsigned int N = 4096;
 };

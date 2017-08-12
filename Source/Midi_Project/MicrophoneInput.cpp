@@ -19,6 +19,7 @@
 #include "vamp-hostsdk/PluginInputDomainAdapter.h"
 #include "vamp-hostsdk/PluginLoader.h"
 
+#include "EngineMinimal.h" 
 
 
 #define SAMPLE_RATE (44100);
@@ -33,7 +34,7 @@ using Vamp::HostExt::PluginInputDomainAdapter;
 VampPluginHost *host;
 
 // Sets default values
-AMicrophoneInput::AMicrophoneInput()
+AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -44,12 +45,13 @@ AMicrophoneInput::AMicrophoneInput()
 	spectrum.Init(0, N / 2);
 	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, key.c_str());
 	host = new VampPluginHost(44000, 1024);
-	tracker = new USimplePitchTracker();
+	//tracker = NewObject <USimplePitchTracker>(this, Namesss); //new USimplePitchTracker();
+	tracker = ObjectInitializer.CreateDefaultSubobject<USimplePitchTracker>(this, TEXT("MyPitchTracker")); 
 }
 
 AMicrophoneInput::~AMicrophoneInput()
 {
-	delete tracker;
+	//delete tracker;
 }
 
 

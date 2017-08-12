@@ -6,10 +6,10 @@
 
 using namespace std;
 
-USimplePitchTracker::USimplePitchTracker()
+USimplePitchTracker::USimplePitchTracker(const FObjectInitializer& ObjectInitializer)
 {
 	initPitchTable();
-	lastTrackedNote = new USimplePitch();
+	lastTrackedNote = new SimplePitch();
 }
 
 USimplePitchTracker::~USimplePitchTracker()
@@ -20,13 +20,13 @@ USimplePitchTracker::~USimplePitchTracker()
 
 void USimplePitchTracker::initPitchTable()
 {
-	pitchTable = new USimplePitch*[notesToRecognize];
+	pitchTable = new SimplePitch*[notesToRecognize];
 	float noteFreq = 16.3516;
 	string toneNames[12] = { "C","C#","D","D#","E","F","F#","G","G#","A","A#","H" };
 	for (int octave = 0; octave < octavesToRecognize; octave++) {
 		for (int note = 0; note < 12; note++) {
 			string name = toneNames[note] + to_string(octave);
-			pitchTable[octave * 12 + note] = new USimplePitch(name, noteFreq, octave);
+			pitchTable[octave * 12 + note] = new SimplePitch(name, noteFreq, octave);
 			FString test = FString(name.c_str());
 			float test2 = noteFreq;
 			UE_LOG(LogTemp, Log, TEXT("My note: %s"), *test);
@@ -82,5 +82,3 @@ int USimplePitchTracker::findPitchByFrequency(int left, int right, int freq)
 	}
 	return -1;
 }
-
-

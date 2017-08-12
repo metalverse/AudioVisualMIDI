@@ -15,16 +15,16 @@ class MIDI_PROJECT_API USimplePitchTracker : public UObject
 	GENERATED_BODY()
 	
 public:
-	USimplePitchTracker();
+	USimplePitchTracker(const FObjectInitializer& ObjectInitializer);
 	~USimplePitchTracker();
 	bool trackNewNote(float freq);
-	USimplePitch* lastTrackedNote;
+	SimplePitch* lastTrackedNote;
 
 private:
 	static const int octavesToRecognize = 9;
 	static const int notesToRecognize = octavesToRecognize * 12;
 	const double freqHalfToneMultiplier = 1.05946309436;
-	USimplePitch** pitchTable;
+	SimplePitch** pitchTable;
 	void initPitchTable();
 	int findPitchByFrequency(int left, int right, int freq);
 	
