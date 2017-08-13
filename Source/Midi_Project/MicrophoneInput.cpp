@@ -43,14 +43,14 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 	voiceCapture->Init(44000, 1); //wspierane 8000 - 48000Hz
 	voiceCapture->Start();
 	spectrum.Init(0, N / 2);
-	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, key.c_str());
 	host = new VampPluginHost(44000, 1024);
-	//tracker = NewObject <USimplePitchTracker>(this, Namesss); //new USimplePitchTracker();
 	tracker = ObjectInitializer.CreateDefaultSubobject<USimplePitchTracker>(this, TEXT("MyPitchTracker")); 
 }
 
 AMicrophoneInput::~AMicrophoneInput()
 {
+	//tracker->ConditionalBeginDestroy();
+	//tracker = NULL;
 	//delete tracker;
 }
 
@@ -205,9 +205,11 @@ void AMicrophoneInput::Tick(float DeltaTime)
 				if (!tracker->trackNewNote(fundamental_frequency)) {
 					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
 				}
-				else {
-					currentPitch = tracker->lastTrackedNote->getName().c_str();
-				}
+				UE_LOG(LogTemp, Log, TEXT("OUT"));
+				/*else {
+					//currentPitch = tracker->currentNote->getName();
+					//trackedPitches.Add(tracker->currentNote);
+				}*/
 			}
 			else {
 				fundamental_frequency = 0;

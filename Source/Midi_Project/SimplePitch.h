@@ -16,15 +16,15 @@ class MIDI_PROJECT_API USimplePitch : public UObject
 public:
 	USimplePitch();
 	~USimplePitch();
-	string getName() { return name; };
-	float getFrequency() { return frequency; };
-	int getOctave() { return octave; };
-	int getTime() { return time; };
-	void setParams(string name, float freq, int octave, int time);
+	UFUNCTION(BlueprintCallable, Category = "SoundParameters") FString getName() { return name; };
+	UFUNCTION(BlueprintCallable, Category = "SoundParameters") float getFrequency() { return frequency; };
+	UFUNCTION(BlueprintCallable, Category = "SoundParameters") int getOctave() { return octave; };
+	UFUNCTION(BlueprintCallable, Category = "SoundParameters") int getTime() { return time; };
+	void setParams(FString name, float freq, int octave, int time);
 	void incrementTime(int value) { time += value; };
 
 private:
-	string name;
+	FString name;
 	int octave;
 	float frequency;
 	int time;
