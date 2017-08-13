@@ -27,7 +27,7 @@ public:
 	//UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") int N = 4096;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") TArray<float> spectrum;
-	//UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") TArray<USimplePitch*> trackedPitches;
+	
 
 	TSharedPtr<class IVoiceCapture> voiceCapture;
 	TSharedPtr<class VampPluginHost> vampHost;

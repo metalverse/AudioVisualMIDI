@@ -59,7 +59,7 @@ AMicrophoneInput::~AMicrophoneInput()
 void AMicrophoneInput::BeginPlay()
 {
 	Super::BeginPlay();
-
+	tracker->trackedPitches.Empty();
 
 }
 
@@ -206,7 +206,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
 				}
 				else {
-					currentPitch = tracker->lastTrackedNote->getName().c_str();
+					currentPitch = tracker->currentNote->getName();
 				}
 			}
 			else {

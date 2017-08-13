@@ -18,8 +18,10 @@ public:
 	USimplePitchTracker(const FObjectInitializer& ObjectInitializer);
 	~USimplePitchTracker();
 	bool trackNewNote(float freq);
-	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") USimplePitch* lastTrackedNote;
+	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") USimplePitch* currentNote;
+	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") USimplePitch* lastTrackedNote;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") TArray<USimplePitch*> pitchTable;
+	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") TArray<USimplePitch*> trackedPitches;
 
 private:
 	static const int octavesToRecognize = 9;
@@ -27,6 +29,7 @@ private:
 	const double freqHalfToneMultiplier = 1.05946309436;
 	void initPitchTable(const FObjectInitializer& ObjectInitializer);
 	int findPitchByFrequency(int left, int right, int freq);
+	void deleteSimplePitchObject(USimplePitch* Object);
 	
 	
 };

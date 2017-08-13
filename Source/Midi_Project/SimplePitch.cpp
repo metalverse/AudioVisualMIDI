@@ -13,7 +13,7 @@ USimplePitch::USimplePitch()
 
 USimplePitch::~USimplePitch(){}
 
-void USimplePitch::setParams(string n, float freq, int oct, int t)
+void USimplePitch::setParams(FString n, float freq, int oct, int t)
 {
 	name = n;
 	frequency = freq;
