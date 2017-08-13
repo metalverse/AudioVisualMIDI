@@ -21,7 +21,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") USimplePitch* currentNote;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") USimplePitch* lastTrackedNote;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") TArray<USimplePitch*> pitchTable;
-	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") TArray<USimplePitch*> trackedPitches;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "SoundParameters") TArray<USimplePitch*> trackedPitches;
 
 private:
 	static const int octavesToRecognize = 9;

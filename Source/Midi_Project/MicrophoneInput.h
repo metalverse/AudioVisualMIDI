@@ -31,7 +31,7 @@ public:
 
 	TSharedPtr<class IVoiceCapture> voiceCapture;
 	TSharedPtr<class VampPluginHost> vampHost;
-	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") USimplePitchTracker* tracker;
+	UPROPERTY(Instanced, EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") USimplePitchTracker* Tracker; USimplePitchTracker* tracker;
 
 	AMicrophoneInput(const FObjectInitializer& ObjectInitializer);
 	~AMicrophoneInput();

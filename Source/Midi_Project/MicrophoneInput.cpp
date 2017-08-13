@@ -60,7 +60,6 @@ void AMicrophoneInput::BeginPlay()
 {
 	Super::BeginPlay();
 	tracker->trackedPitches.Empty();
-
 }
 
 void NormalizeBufValues(uint8* inBuf, float* outBuf, int samples) {

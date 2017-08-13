@@ -68,9 +68,11 @@ bool USimplePitchTracker::trackNewNote(float freq)
 			lastTrackedNote = currentNote;
 			currentNote = pitchTable[noteIndex];
 			if (currentNote == lastTrackedNote) {
-				trackedPitches.Last()->incrementTime(1);
+				//trackedPitches.Last()->incrementTime(1);
 			} else {
-				trackedPitches.Add(currentNote);
+				USimplePitch* pitch = NewObject<USimplePitch>(this);
+				pitch->setParams(currentNote->getName(), currentNote->getFrequency(), currentNote->getOctave(), 1);
+				trackedPitches.Add(pitch);
 			}
 			UE_LOG(LogTemp, Log, TEXT("TRACKED NOTE: %s"), *noteName);
 			UE_LOG(LogTemp, Log, TEXT("FREQ: %f"), pitchTable[noteIndex]->getFrequency());
