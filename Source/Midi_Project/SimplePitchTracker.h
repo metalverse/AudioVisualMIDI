@@ -9,6 +9,9 @@
 /**
  * 
  */
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FSoundDelegate);
+
 UCLASS(Blueprintable)
 class MIDI_PROJECT_API USimplePitchTracker : public UObject
 {
@@ -22,14 +25,18 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") USimplePitch* lastTrackedNote;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") TArray<USimplePitch*> pitchTable;
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "SoundParameters") TArray<USimplePitch*> trackedPitches;
+	UPROPERTY(BlueprintAssignable, Category = "Test")
+		FSoundDelegate OnSoundRecordedDelegate;
 
 private:
 	static const int octavesToRecognize = 9;
 	static const int notesToRecognize = octavesToRecognize * 12;
 	const double freqHalfToneMultiplier = 1.05946309436;
+	int numberOfTrackingPitches = 0;
 	void initPitchTable(const FObjectInitializer& ObjectInitializer);
 	int findPitchByFrequency(int left, int right, int freq);
 	void deleteSimplePitchObject(USimplePitch* Object);
-	
+	void addNewPitchToTrackedList(USimplePitch* Object);
+
 	
 };

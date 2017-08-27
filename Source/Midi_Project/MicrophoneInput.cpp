@@ -46,7 +46,7 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, key.c_str());
 	host = new VampPluginHost(44000, 1024);
 	//tracker = NewObject <USimplePitchTracker>(this, Namesss); //new USimplePitchTracker();
-	tracker = ObjectInitializer.CreateDefaultSubobject<USimplePitchTracker>(this, TEXT("MyPitchTracker")); 
+	tracker = ObjectInitializer.CreateDefaultSubobject<USimplePitchTracker>(this, TEXT("MyPitchTracker"));
 }
 
 AMicrophoneInput::~AMicrophoneInput()
@@ -59,7 +59,8 @@ AMicrophoneInput::~AMicrophoneInput()
 void AMicrophoneInput::BeginPlay()
 {
 	Super::BeginPlay();
-	tracker->trackedPitches.Empty();
+
+	//tracker->trackedPitches.Empty();
 }
 
 void NormalizeBufValues(uint8* inBuf, float* outBuf, int samples) {

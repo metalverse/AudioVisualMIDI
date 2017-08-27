@@ -9,14 +9,16 @@ USimplePitch::USimplePitch()
 	frequency = 0;
 	octave = -1;
 	time = 0;
+	pitchId = 0;
 }
 
 USimplePitch::~USimplePitch(){}
 
-void USimplePitch::setParams(FString n, float freq, int oct, int t)
+void USimplePitch::setParams(FString n, float freq, int oct, int t, int id)
 {
 	name = n;
 	frequency = freq;
 	octave = oct;
 	time = t;
+	pitchId = id;
 }
