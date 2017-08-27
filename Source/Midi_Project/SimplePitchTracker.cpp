@@ -15,6 +15,7 @@ USimplePitchTracker::USimplePitchTracker(const FObjectInitializer& ObjectInitial
 	USimplePitch* pitch = ObjectInitializer.CreateDefaultSubobject<USimplePitch>(this, TEXT("tmpPitch"));
 	pitch->setParams("None", 0, 0, 0, 0);
 	trackedPitches.Add(pitch);
+	numberOfTrackingPitches++;
 	/*for (int i = 0; i < notesToRecognize; i++) {
 	UE_LOG(LogTemp, Log, TEXT("My note FREQ: %f"), pitchTable[i]->getFrequency());
 	}*/
@@ -49,9 +50,9 @@ void USimplePitchTracker::initPitchTable(const FObjectInitializer& ObjectInitial
 
 bool USimplePitchTracker::trackNewNote(float freq)
 {
-	for (int i = 0; i < notesToRecognize; i++) {
+	/*for (int i = 0; i < notesToRecognize; i++) {
 		UE_LOG(LogTemp, Log, TEXT("My note FREQ+++: %f"), pitchTable[i]->getFrequency());
-	}
+	}*/
 	if (freq > pitchTable[notesToRecognize - 1]->getFrequency() || freq < pitchTable[0]->getFrequency()) {
 		UE_LOG(LogTemp, Log, TEXT("STH WENT WRONG"));
 		UE_LOG(LogTemp, Log, TEXT("MAX: %f "), pitchTable[notesToRecognize - 1]->getFrequency());
@@ -77,7 +78,7 @@ bool USimplePitchTracker::trackNewNote(float freq)
 				UE_LOG(LogTemp, Log, TEXT("Incrementing time of last note "));
 				trackedPitches.Last()->incrementTime(1);
 			}
-			else if (trackedPitches.Last()->getTime() == 1) {
+			else if (trackedPitches.Last()->getTime() < 2) {
 				UE_LOG(LogTemp, Log, TEXT("+Removing last note and adding new one "));
 				trackedPitches.Pop();
 				--numberOfTrackingPitches;
@@ -127,5 +128,5 @@ void USimplePitchTracker::addNewPitchToTrackedList(USimplePitch* myNote)
 	pitch->setParams(myNote->getName(), myNote->getFrequency(), myNote->getOctave(), 1, myNote->getPitchId());
 	trackedPitches.Add(pitch);
 	++numberOfTrackingPitches;
-	OnSoundRecordedDelegate.Broadcast();
+	OnSoundRecordedDelegate.Broadcast(pitch->getPitchId());
 }

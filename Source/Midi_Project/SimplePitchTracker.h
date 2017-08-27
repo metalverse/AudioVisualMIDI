@@ -10,7 +10,7 @@
 *
 */
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FSoundDelegate);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSoundDelegate, int, currentPitchId);
 
 UCLASS(Blueprintable)
 class MIDI_PROJECT_API USimplePitchTracker : public UObject
