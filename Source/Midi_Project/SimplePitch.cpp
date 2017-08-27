@@ -12,7 +12,7 @@ USimplePitch::USimplePitch()
 	pitchId = 0;
 }
 
-USimplePitch::~USimplePitch(){}
+USimplePitch::~USimplePitch() {}
 
 void USimplePitch::setParams(FString n, float freq, int oct, int t, int id)
 {

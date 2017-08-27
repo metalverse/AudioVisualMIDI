@@ -3,47 +3,49 @@
 #include "Midi_Project.h"
 #include "SimplePitchTracker.h"
 
+
 using namespace std;
 
 USimplePitchTracker::USimplePitchTracker(const FObjectInitializer& ObjectInitializer)
 {
-	//trackedPitches.Empty();
 	//pitchTable.Init(ObjectInitializer.CreateDefaultSubobject<USimplePitch>(this, TEXT("NewPitch")), notesToRecognize);
 	initPitchTable(ObjectInitializer);
 	currentNote = ObjectInitializer.CreateDefaultSubobject<USimplePitch>(this, TEXT("currentPitch"));
 	currentNote->setParams("None", 0, 0, 0, 0);
-	USimplePitch* pitch = ObjectInitializer.CreateDefaultSubobject<USimplePitch>(this, TEXT("tmpCurrentPitch"));
-	pitch->setParams(currentNote->getName(), currentNote->getFrequency(), currentNote->getOctave(), 1, 0);
+	USimplePitch* pitch = ObjectInitializer.CreateDefaultSubobject<USimplePitch>(this, TEXT("tmpPitch"));
+	pitch->setParams("None", 0, 0, 0, 0);
 	trackedPitches.Add(pitch);
 	/*for (int i = 0; i < notesToRecognize; i++) {
-		UE_LOG(LogTemp, Log, TEXT("My note FREQ: %f"), pitchTable[i]->getFrequency());
+	UE_LOG(LogTemp, Log, TEXT("My note FREQ: %f"), pitchTable[i]->getFrequency());
 	}*/
 }
 
 USimplePitchTracker::~USimplePitchTracker()
 {
 	/*for (int i = 0; i < notesToRecognize; i++) {
-		deleteSimplePitchObject(trackedPitches.Pop());
+	deleteSimplePitchObject(trackedPitches.Pop());
 	}*/
 }
 
 void USimplePitchTracker::initPitchTable(const FObjectInitializer& ObjectInitializer)
 {
 	float noteFreq = 16.3516;
-	int pitchId = 0;
+	int id = 0;
 	FString toneNames[12] = { "C","C#","D","D#","E","F","F#","G","G#","A","A#","H" };
 	for (int octave = 0; octave < octavesToRecognize; octave++) {
 		for (int note = 0; note < 12; note++) {
 			FString name = toneNames[note] + FString::FromInt(octave);
 			USimplePitch* pitch = ObjectInitializer.CreateDefaultSubobject<USimplePitch>(this, FName(*name));
-			pitch->setParams(name, noteFreq, octave, 0, pitchId++);
+			pitch->setParams(name, noteFreq, octave, 0, id++);
 			pitchTable.Add(pitch);
+			float test2 = noteFreq;
 			UE_LOG(LogTemp, Log, TEXT("My note: %s"), *name);
 			UE_LOG(LogTemp, Log, TEXT("My note: %f"), noteFreq);
 			noteFreq *= freqHalfToneMultiplier;
 		}
 	}
 }
+
 
 bool USimplePitchTracker::trackNewNote(float freq)
 {
@@ -93,11 +95,6 @@ bool USimplePitchTracker::trackNewNote(float freq)
 	}
 }
 
-/*
-* Find pitch by frequency. 
-* return	 index of pitch from pitchTable
-* retVal -1  if cannot find pitch
-*/
 int USimplePitchTracker::findPitchByFrequency(int left, int right, int freq)
 {
 	if (left > right) {
@@ -120,15 +117,6 @@ int USimplePitchTracker::findPitchByFrequency(int left, int right, int freq)
 		return findPitchByFrequency(middle + 1, right, freq);
 	}
 	return -1;
-}
-
-void USimplePitchTracker::deleteSimplePitchObject(USimplePitch* MyObject)
-{
-	if (!MyObject) return;
-	if (!MyObject->IsValidLowLevel()) return;
-
-	MyObject->ConditionalBeginDestroy(); //instantly clears UObject out of memory
-	MyObject = nullptr;
 }
 
 void USimplePitchTracker::addNewPitchToTrackedList(USimplePitch* myNote)

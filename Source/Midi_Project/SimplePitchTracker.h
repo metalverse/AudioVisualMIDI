@@ -7,8 +7,8 @@
 #include "SimplePitchTracker.generated.h"
 
 /**
- * 
- */
+*
+*/
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FSoundDelegate);
 
@@ -16,7 +16,7 @@ UCLASS(Blueprintable)
 class MIDI_PROJECT_API USimplePitchTracker : public UObject
 {
 	GENERATED_BODY()
-	
+
 public:
 	USimplePitchTracker(const FObjectInitializer& ObjectInitializer);
 	~USimplePitchTracker();
@@ -35,8 +35,5 @@ private:
 	int numberOfTrackingPitches = 0;
 	void initPitchTable(const FObjectInitializer& ObjectInitializer);
 	int findPitchByFrequency(int left, int right, int freq);
-	void deleteSimplePitchObject(USimplePitch* Object);
 	void addNewPitchToTrackedList(USimplePitch* Object);
-
-	
 };

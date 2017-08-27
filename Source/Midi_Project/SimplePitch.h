@@ -12,7 +12,7 @@ UCLASS(BlueprintType)
 class MIDI_PROJECT_API USimplePitch : public UObject
 {
 	GENERATED_BODY()
-	
+
 public:
 	USimplePitch();
 	~USimplePitch();
