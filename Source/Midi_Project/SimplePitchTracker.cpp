@@ -50,51 +50,28 @@ void USimplePitchTracker::initPitchTable(const FObjectInitializer& ObjectInitial
 
 bool USimplePitchTracker::trackNewNote(float freq)
 {
-	/*for (int i = 0; i < notesToRecognize; i++) {
-		UE_LOG(LogTemp, Log, TEXT("My note FREQ+++: %f"), pitchTable[i]->getFrequency());
-	}*/
+
+	UE_LOG(LogTemp, Log, TEXT("FREQ: %f "), freq);
+
 	if (freq > pitchTable[notesToRecognize - 1]->getFrequency() || freq < pitchTable[0]->getFrequency()) {
 		UE_LOG(LogTemp, Log, TEXT("STH WENT WRONG"));
 		UE_LOG(LogTemp, Log, TEXT("MAX: %f "), pitchTable[notesToRecognize - 1]->getFrequency());
 		UE_LOG(LogTemp, Log, TEXT("MIN: %f "), pitchTable[0]->getFrequency());
-		UE_LOG(LogTemp, Log, TEXT("FREQ: %f "), freq);
 		return false;
 	}
 	else {
 		int left = 0;
 		int right = notesToRecognize - 1;
-
-		UE_LOG(LogTemp, Log, TEXT("FREQ: %f"), freq);
-
 		int noteIndex = findPitchByFrequency(left, right, freq);
-		UE_LOG(LogTemp, Log, TEXT("Index: %d "), noteIndex);
 		if (noteIndex != -1) {
-			FString noteName = FString(pitchTable[noteIndex]->getName());
-			UE_LOG(LogTemp, Log, TEXT("Name: %s "), *noteName);
-			lastTrackedNote = currentNote;
-			currentNote = pitchTable[noteIndex];
-			UE_LOG(LogTemp, Log, TEXT("Obtain current note "));
-			if (currentNote == lastTrackedNote) {
-				UE_LOG(LogTemp, Log, TEXT("Incrementing time of last note "));
-				trackedPitches.Last()->incrementTime(1);
-			}
-			else if (trackedPitches.Last()->getTime() < 2) {
-				UE_LOG(LogTemp, Log, TEXT("+Removing last note and adding new one "));
-				trackedPitches.Pop();
-				--numberOfTrackingPitches;
-				addNewPitchToTrackedList(currentNote);
-			}
-			else {
-				UE_LOG(LogTemp, Log, TEXT("+Adding new note "));
-				addNewPitchToTrackedList(currentNote);
-			}
-			UE_LOG(LogTemp, Log, TEXT("TRACKED NOTE: %s"), *noteName);
-			UE_LOG(LogTemp, Log, TEXT("FREQ: %f"), pitchTable[noteIndex]->getFrequency());
+			handleAddNewNote(noteIndex);
 			return true;
 		}
 		return false;
 	}
 }
+
+
 
 int USimplePitchTracker::findPitchByFrequency(int left, int right, int freq)
 {
@@ -129,4 +106,27 @@ void USimplePitchTracker::addNewPitchToTrackedList(USimplePitch* myNote)
 	trackedPitches.Add(pitch);
 	++numberOfTrackingPitches;
 	OnSoundRecordedDelegate.Broadcast(pitch->getPitchId());
+}
+
+void USimplePitchTracker::handleAddNewNote(int noteId) {
+	FString noteName = FString(pitchTable[noteId]->getName());
+	UE_LOG(LogTemp, Log, TEXT("Name: %s "), *noteName);
+	lastTrackedNote = currentNote;
+	currentNote = pitchTable[noteId];
+	if (currentNote == lastTrackedNote) {
+		UE_LOG(LogTemp, Log, TEXT("Incrementing time of last note "));
+		trackedPitches.Last()->incrementTime(1);
+	}
+	else if (trackedPitches.Last()->getTime() < 2) {
+		UE_LOG(LogTemp, Log, TEXT("+Removing last note and adding new one "));
+		trackedPitches.Pop();
+		--numberOfTrackingPitches;
+		addNewPitchToTrackedList(currentNote);
+	}
+	else {
+		UE_LOG(LogTemp, Log, TEXT("+Adding new note "));
+		addNewPitchToTrackedList(currentNote);
+	}
+	UE_LOG(LogTemp, Log, TEXT("TRACKED NOTE: %s"), *noteName);
+	UE_LOG(LogTemp, Log, TEXT("FREQ: %f"), pitchTable[noteIndex]->getFrequency());
 }

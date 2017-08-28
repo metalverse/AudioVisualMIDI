@@ -36,4 +36,5 @@ private:
 	void initPitchTable(const FObjectInitializer& ObjectInitializer);
 	int findPitchByFrequency(int left, int right, int freq);
 	void addNewPitchToTrackedList(USimplePitch* Object);
+	void handleAddNewNote(int noteId);
 };
