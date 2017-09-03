@@ -46,8 +46,9 @@ public:
 		);
 
 private:
+	template<typename T>
+	bool NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8, int32 buffSize, float* outBuf, uint32 outBuffSize, float& volume);
 	int tmpCounter = 0;
-	//double pi;
 	float* vector;
 	float const silenceTreshold = 65.f*65.f;
 	bool finished = true;

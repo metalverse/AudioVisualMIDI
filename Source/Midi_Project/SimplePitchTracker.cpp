@@ -128,5 +128,5 @@ void USimplePitchTracker::handleAddNewNote(int noteId) {
 		addNewPitchToTrackedList(currentNote);
 	}
 	UE_LOG(LogTemp, Log, TEXT("TRACKED NOTE: %s"), *noteName);
-	UE_LOG(LogTemp, Log, TEXT("FREQ: %f"), pitchTable[noteIndex]->getFrequency());
+	UE_LOG(LogTemp, Log, TEXT("FREQ: %f"), pitchTable[noteId]->getFrequency());
 }
