@@ -5,24 +5,29 @@
 #include <iostream>
 
 
-VampPluginHost::VampPluginHost(float sR, int bSize)
+VampPluginHost::VampPluginHost(float sR, int bSize, int sSize)
 {
 	sampleRate = sR;
 	loader2 = PluginLoader::getInstance();
-	PluginLoader::PluginKey key = loader2->composePluginKey("vamp-example-plugins", "zerocrossing");
+	//PluginLoader::PluginKey key = loader2->composePluginKey("pyin", "yin");
+	PluginLoader::PluginKey key = loader2->composePluginKey("pyin", "yin");
 	plugin2 = loader2->loadPlugin(key, sR, PluginLoader::ADAPT_ALL_SAFE);
 	vector<string> path = PluginHostAdapter::getPluginPath();
-	/*if(path.size() > 0) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, path[0].c_str());
+	//if(path.size() > 0) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, path[0].c_str());
 	if (!plugin2) {
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, "BLAD WCZYTYWANIA WTYCZKI");
+		UE_LOG(LogTemp, Log, TEXT("Error loading plugin!"));
+		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, "BLAD WCZYTYWANIA WTYCZKI");
 	}
 	else {
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, plugin2->getIdentifier().c_str());
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, "Wtyczka wczytana!");
-	}*/
-
+		UE_LOG(LogTemp, Log, TEXT("Wtyczka wczytana!"));
+		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, plugin2->getIdentifier().c_str());
+		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, "Wtyczka wczytana!");
+	}
+	
 	blockSize = plugin2->getPreferredBlockSize();
 	stepSize = plugin2->getPreferredStepSize();
+	UE_LOG(LogTemp, Log, TEXT("Preferred block size: %d"), blockSize);
+	UE_LOG(LogTemp, Log, TEXT("Preferred step size: %d"), stepSize);
 	
 	if (blockSize == 0) {
 		blockSize = bSize;
@@ -43,9 +48,10 @@ VampPluginHost::VampPluginHost(float sR, int bSize)
 		else {
 			blockSize = stepSize;
 		}
-		cerr << blockSize << endl;
+		//cerr << blockSize << endl;
 	}
 	overlapSize = blockSize - stepSize;
+	stepSize = sSize;
 	UE_LOG(LogTemp, Log, TEXT("Block size: %d"), blockSize);
 	UE_LOG(LogTemp, Log, TEXT("Step size: %d"), stepSize);
 }
@@ -56,51 +62,57 @@ VampPluginHost::~VampPluginHost(){}
 
 using namespace std;
 
-int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int inputSize, float *outputBuffer)
+int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int inputSize)
 {
-	
-	int finalStepsRemaining = max(1, (blockSize / stepSize) - 1);
-	int currentStep = 0;
+	UE_LOG(LogTemp, Log, TEXT("In plugin, size: %d"), inputSize);
 	int channels = 1;
-	float *filebuf = new float[blockSize * channels];
+	
+	int finalStepsRemaining = max(1, (inputSize / stepSize));
+	int currentStep = 0;
+	
+	//float *filebuf = new float[blockSize * channels];
 	int blockLeft = inputSize;
 
 	if (!plugin2->initialise(channels, stepSize, blockSize)) {
+		UE_LOG(LogTemp, Log, TEXT("Error initializing plugin!"));
 		return -1;
 	}
-	do{
-		finalStepsRemaining = 0;
-		int	count;
-
-		if (currentStep == 0 || blockSize == stepSize) {
-			if (blockLeft >= blockSize) {
-				count = blockSize;
+	int	leftRange = 0;
+	int rightRange = 0;
+	do {
+		int count = 0;
+		if ((currentStep == 0)) {
+			leftRange = 0;
+			if (blockLeft > blockSize) {
+				rightRange = blockSize;
 				blockLeft -= blockSize;
-			}else{
-				count = blockLeft;
+			} else {
+				rightRange = blockLeft;
+				blockLeft = 0;
+				finalStepsRemaining = 0;
 			}
-			if (count != blockSize) --finalStepsRemaining;
-		}
-		else {
-			memmove(inputBuffer, inputBuffer + (stepSize * channels), overlapSize * channels * sizeof(float));
-			if (blockLeft >= stepSize) {
-				count = stepSize;
+		} else {
+			if (blockLeft > stepSize) {
+				leftRange += stepSize;
+				rightRange += stepSize;
 				blockLeft -= stepSize;
+			} else {
+				leftRange += blockLeft;
+				rightRange += blockLeft;
+				blockLeft = 0;
+				finalStepsRemaining = 0;
 			}
-			else {
-				count = blockLeft;
-			}
-			if (count != stepSize) --finalStepsRemaining;
-			count += overlapSize;
 		}
-
+		count = rightRange - leftRange;
+		
 		float **plugbuf = new float*[channels];
-		for (int c = 0; c < channels; ++c) plugbuf[c] = new float[blockSize + 2];
-
+		for (int c = 0; c < channels; ++c) {
+			plugbuf[c] = new float[blockSize + 2];
+		}
 		for (int c = 0; c < channels; ++c) {
 			int j = 0;
 			while (j < count) {
-				plugbuf[c][j] = inputBuffer[j+c];// 0;//filebuf[j * sfinfo.channels + c];
+				plugbuf[c][j] = inputBuffer[(j + leftRange) * channels + c];// 0;//filebuf[j * sfinfo.channels + c];
 				//UE_LOG(LogTemp, Log, TEXT("inputBuffer: %f"), plugbuf[c][j]);
 				++j;
 			}
@@ -110,27 +122,39 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 			}
 		}
 		
-		//Plugin::OutputList outputs = plugin->getOutputDescriptors();
-		//Plugin::OutputDescriptor od;
+				//Plugin::OutputList outputs = plugin->getOutputDescriptors();
+				//Plugin::OutputDescriptor od;
 		
 
 		RealTime rt;
 
 		rt = RealTime::frame2RealTime(currentStep * stepSize, sampleRate);
-
+		UE_LOG(LogTemp, Log, TEXT("Processing. Current step: %d"), currentStep);
 		features = plugin2->process(plugbuf, rt);
+		//UE_LOG(LogTemp, Log, TEXT("After process"));
+		
+		/*if (!(features.find(0) == features.end())) {
+			UE_LOG(LogTemp, Log, TEXT("Features!"));
+			for (size_t i = 0; i < features.at(0).size(); ++i) {
+				const Plugin::Feature &f = features.at(0).at(i);
+				for (size_t j = 0; j < f.values.size(); ++j) {
+					UE_LOG(LogTemp, Log, TEXT("Value: %f"), f.values[j]);
+				}
+			}
+		} else {
+			UE_LOG(LogTemp, Log, TEXT("Features empty"));
+		}*/
+		//const Plugin::Feature &f = features.at(0).at(0);
 
-		const Plugin::Feature &f = features.at(0).at(0);
-
-		for (unsigned int i = 0; i < f.values.size(); ++i) {
+		/*for (unsigned int i = 0; i < f.values.size(); ++i) {
 			string sth = std::to_string(f.values[i]);
 			UE_LOG(LogTemp, Log, TEXT("Value: %f"), f.values[i]);
-		}
+		}*/
 		delete plugbuf;
-
-
+		
 		++currentStep;
 	} while (finalStepsRemaining > 0);
+	UE_LOG(LogTemp, Log, TEXT("Plugin loaded!"));
 	return 0;
 }
 

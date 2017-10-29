@@ -44,7 +44,7 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 	voiceCapture->Start();
 	spectrum.Init(0, N / 2);
 	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, key.c_str());
-	host = new VampPluginHost(44000, 1024);
+	host = new VampPluginHost(44000, 2048, 1024);
 	//tracker = NewObject <USimplePitchTracker>(this, Namesss); //new USimplePitchTracker();
 	tracker = ObjectInitializer.CreateDefaultSubobject<USimplePitchTracker>(this, TEXT("MyPitchTracker"));
 }
@@ -109,10 +109,19 @@ void AMicrophoneInput::Tick(float DeltaTime)
 	int maxBytes = 0;
 	uint32 bytesAvailable = 0;
 	EVoiceCaptureState::Type captureState = voiceCapture->GetCaptureState(bytesAvailable);
-	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, EVoiceCaptureState::ToString(captureState));
+	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(bytesAvailable).Append(" bytesAvailable"));
+	FString bufforStatus = EVoiceCaptureState::ToString(captureState);
+	UE_LOG(LogTemp, Log, TEXT("Buffor status: %s"), *bufforStatus);
+	int bytAvailable = bytesAvailable;
+	UE_LOG(LogTemp, Log, TEXT("Bytes available: %d"), bytAvailable);
+	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, EVoiceCaptureState::ToString(captureState));
 	if (captureState == EVoiceCaptureState::Ok && bytesAvailable >= 0)
 	{
+		UE_LOG(LogTemp, Log, TEXT("My buffor dealing with: %d samples"), N);
+		UE_LOG(LogTemp, Log, TEXT("Bytes taken: %d"), bytesAvailable);
 		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(bytesAvailable).Append(" bytesAvailable"));
+		unsigned int byt = bytesAvailable;
+		//C
 		maxBytes = bytesAvailable;
 		uint8* buf = new uint8[maxBytes];
 		memset(buf, 0, maxBytes);
@@ -123,7 +132,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		samples = readBytes / 2;
 		float* sampleBuf = new float[samples];
 		bool isSilence = NormalizeDataAndCheckForSilence((int16*)buf, buf, readBytes, sampleBuf, samples, volume);
-
+		/*
 		kiss_fft_cpx in[N], out[N];
 		for (uint32 i = 0; i < samples; i++) {
 			if (i < N) {
@@ -144,9 +153,30 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		{
 			spectrum[i] = sqrt(abs(out[i].r + out[i].i));
 			if (spectrum[i] > peak) peak_idx = i, peak = spectrum[i];
-		}
+		}*/
 		if (!isSilence) {
-			fundamental_frequency = (peak_idx * 44000.0f / (1.0f * N));
+			//fundamental_frequency = (peak_idx * 44000.0f / (1.0f * N));
+			
+			//////////////// HOST /////////////////////
+			const int frequencyOutput = 0;
+			if (samples >= 2048) host->runPlugin("pyin", "yin", sampleBuf, samples);
+			if (!(host->features.find(0) == host->features.end())) {
+				UE_LOG(LogTemp, Log, TEXT("Features!"));
+				for (size_t i = 0; i < host->features.at(frequencyOutput).size(); ++i) {
+					const Plugin::Feature &f = host->features.at(frequencyOutput).at(i);
+					for (size_t j = 0; j < f.values.size(); ++j) {
+						float pluginFreq = f.values[j];
+						fundamental_frequency = FGenericPlatformMath::Abs(pluginFreq);
+						GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::SanitizeFloat(pluginFreq).Append(" Hz"));
+						UE_LOG(LogTemp, Log, TEXT("Value: %f"), pluginFreq);
+					}
+				}
+			}
+			else {
+				fundamental_frequency = 0;
+				UE_LOG(LogTemp, Log, TEXT("Features empty"));
+			}
+
 			UE_LOG(LogTemp, Log, TEXT("My value: %d"), fundamental_frequency);
 			if (!tracker->trackNewNote(fundamental_frequency)) {
 				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
@@ -154,12 +184,12 @@ void AMicrophoneInput::Tick(float DeltaTime)
 			else {
 				currentPitch = tracker->currentNote->getName();
 			}
-			//////// HOST /////////////////////
-			host->runPlugin("vamp-example-plugins", "zerocrossing", sampleBuf, samples, sampleBuf);
-			const Plugin::Feature &f = host->features.at(0).at(0);
+
+			//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::FromInt(wynik).Append(" : wynik host->runPlugin()"));
+			/*const Plugin::Feature &f = host->features.at(0).at(0);
 			for (unsigned int i = 0; i < f.values.size(); ++i) {
-				//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Green, FString::SanitizeFloat(f.values[i]));
-			}
+				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Green, FString::SanitizeFloat(f.values[0]));
+			}*/
 			///////////////////////////////////
 
 		} else {
@@ -172,7 +202,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		delete[] sampleBuf;
 	}
 	else {
-		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Turquoise, "No data");
+		//GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Turquoise, "No data");
 	}
 
 }

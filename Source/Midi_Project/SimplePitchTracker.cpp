@@ -84,8 +84,8 @@ int USimplePitchTracker::findPitchByFrequency(int left, int right, int freq)
 	float freqRight = (tmpFreq + tmpFreq * freqHalfToneMultiplier) / 2;
 
 	if (freq > freqLeft && freq < freqRight) {
-		UE_LOG(LogTemp, Log, TEXT("FREQ L: %f"), freqLeft);
-		UE_LOG(LogTemp, Log, TEXT("FREQ R: %f"), freqRight);
+		//UE_LOG(LogTemp, Log, TEXT("FREQ L: %f"), freqLeft);
+		//UE_LOG(LogTemp, Log, TEXT("FREQ R: %f"), freqRight);
 		return middle;
 	}
 	if (freq < tmpFreq) {
@@ -121,7 +121,20 @@ void USimplePitchTracker::handleAddNewNote(int noteId) {
 		UE_LOG(LogTemp, Log, TEXT("+Removing last note and adding new one "));
 		trackedPitches.Pop();
 		--numberOfTrackingPitches;
-		addNewPitchToTrackedList(currentNote);
+		if (numberOfTrackingPitches > 0) {
+			if (trackedPitches.Last()->getPitchId() == noteId) {
+				UE_LOG(LogTemp, Log, TEXT("++Incrementing last note "));
+				trackedPitches.Last()->incrementTime(1);
+				lastTrackedNote = pitchTable[noteId];
+			} else {
+				UE_LOG(LogTemp, Log, TEXT("++Adding new note "));
+				addNewPitchToTrackedList(currentNote);
+			}
+		}
+		else {
+			UE_LOG(LogTemp, Log, TEXT("+Adding new note "));
+			addNewPitchToTrackedList(currentNote);
+		}
 	}
 	else {
 		UE_LOG(LogTemp, Log, TEXT("+Adding new note "));

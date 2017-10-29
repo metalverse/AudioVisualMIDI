@@ -59,7 +59,7 @@ private:
 	Plugin *plugin2;
 public:
 	Plugin::FeatureSet features;
-	VampPluginHost(float, int);
+	VampPluginHost(float, int, int);
 	~VampPluginHost();
 	void printFeatures(int, int,
 		const Plugin::OutputDescriptor &, int,
@@ -70,5 +70,5 @@ public:
 	void printPluginCategoryList();
 	void enumeratePlugins(Verbosity);
 	void listPluginsInLibrary(string soname);
-	int runPlugin(string soname, string id, float *inputBuffer, int inputSize, float *outputBuffer);
+	int runPlugin(string soname, string id, float *inputBuffer, int inputSize);
 };
