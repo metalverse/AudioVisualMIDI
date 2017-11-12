@@ -59,6 +59,7 @@ private:
 	Plugin *plugin2;
 public:
 	Plugin::FeatureSet features;
+	std::vector<float> extractedFeatures;
 	VampPluginHost(float, int, int);
 	~VampPluginHost();
 	void printFeatures(int, int,
@@ -71,4 +72,5 @@ public:
 	void enumeratePlugins(Verbosity);
 	void listPluginsInLibrary(string soname);
 	int runPlugin(string soname, string id, float *inputBuffer, int inputSize);
+	std::vector<float> getExtractedFeatures();
 };

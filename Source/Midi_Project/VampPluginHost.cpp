@@ -5,6 +5,11 @@
 #include <iostream>
 
 
+std::vector<float> VampPluginHost::getExtractedFeatures() {
+	return extractedFeatures;
+}
+
+
 VampPluginHost::VampPluginHost(float sR, int bSize, int sSize)
 {
 	sampleRate = sR;
@@ -77,6 +82,7 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 		UE_LOG(LogTemp, Log, TEXT("Error initializing plugin!"));
 		return -1;
 	}
+	extractedFeatures.clear();
 	int	leftRange = 0;
 	int rightRange = 0;
 	do {
@@ -131,8 +137,20 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 		rt = RealTime::frame2RealTime(currentStep * stepSize, sampleRate);
 		UE_LOG(LogTemp, Log, TEXT("Processing. Current step: %d"), currentStep);
 		features = plugin2->process(plugbuf, rt);
+
+		if (!(features.find(0) == features.end())) {
+			//UE_LOG(LogTemp, Log, TEXT("Features!"));
+			for (size_t i = 0; i < features.at(0).size(); ++i) {
+				const Plugin::Feature &f = features.at(0).at(i);
+				for (size_t j = 0; j < f.values.size(); ++j) {
+					float pluginFreq = f.values[j];
+					extractedFeatures.push_back(FGenericPlatformMath::Abs(pluginFreq));		
+					UE_LOG(LogTemp, Log, TEXT("Value: %f"), pluginFreq);
+				}
+			}
+		}
 		//UE_LOG(LogTemp, Log, TEXT("After process"));
-		
+		//extractedFeatures
 		/*if (!(features.find(0) == features.end())) {
 			UE_LOG(LogTemp, Log, TEXT("Features!"));
 			for (size_t i = 0; i < features.at(0).size(); ++i) {

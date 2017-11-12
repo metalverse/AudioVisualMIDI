@@ -1,9 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Midi_Project.h"
-#include "tools/kiss_fftnd.h"
+//#include "tools/kiss_fftnd.h"
 #include "MicrophoneInput.h"
 #include "VampPluginHost.h"
+
+#include <algorithm>
 
 //#include "vamp/vamp.h"
 //#include "vamp-sdk/PluginAdapter.h"
@@ -132,65 +134,35 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		samples = readBytes / 2;
 		float* sampleBuf = new float[samples];
 		bool isSilence = NormalizeDataAndCheckForSilence((int16*)buf, buf, readBytes, sampleBuf, samples, volume);
-		/*
-		kiss_fft_cpx in[N], out[N];
-		for (uint32 i = 0; i < samples; i++) {
-			if (i < N) {
-				in[i].r = sampleBuf[i], in[i].i = 0;
-				out[i].r = 0, out[i].i = 0;
-			}
-		}
-		//Adding sampleBuf to mainBuf
-		kiss_fft_cfg mycfg;
-		// Get N samples from sampleBuf for FFT
-		if ((mycfg = kiss_fft_alloc(N, 0, NULL, NULL)) != NULL) {
-			kiss_fft(mycfg, in, out);
-			free(mycfg);
-		}
-		int peak = 0, peak_idx = 0;
-
-		for (int i = 0; i < N / 2; i++)
-		{
-			spectrum[i] = sqrt(abs(out[i].r + out[i].i));
-			if (spectrum[i] > peak) peak_idx = i, peak = spectrum[i];
-		}*/
+		
 		if (!isSilence) {
 			//fundamental_frequency = (peak_idx * 44000.0f / (1.0f * N));
 			
 			//////////////// HOST /////////////////////
 			const int frequencyOutput = 0;
 			if (samples >= 2048) host->runPlugin("pyin", "yin", sampleBuf, samples);
-			if (!(host->features.find(0) == host->features.end())) {
-				UE_LOG(LogTemp, Log, TEXT("Features!"));
-				for (size_t i = 0; i < host->features.at(frequencyOutput).size(); ++i) {
-					const Plugin::Feature &f = host->features.at(frequencyOutput).at(i);
-					for (size_t j = 0; j < f.values.size(); ++j) {
-						float pluginFreq = f.values[j];
-						fundamental_frequency = FGenericPlatformMath::Abs(pluginFreq);
-						GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::SanitizeFloat(pluginFreq).Append(" Hz"));
-						UE_LOG(LogTemp, Log, TEXT("Value: %f"), pluginFreq);
+
+			auto features = host->getExtractedFeatures();
+			if (features.size() > 0) {
+				std::sort(features.begin(), features.end());
+				for (auto feature : features) {
+					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::SanitizeFloat(feature).Append(" Hz"));
+					UE_LOG(LogTemp, Log, TEXT("My value: %f"), feature);
+					fundamental_frequency = feature;
+					if (!tracker->trackNewNote(feature)) {
+						GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
+					}
+					else {
+						currentPitch = tracker->currentNote->getName();
 					}
 				}
+				//const auto median_it = features.begin() + features.size() / 2;
+				//fundamental_frequency = (*median_it);
 			}
 			else {
 				fundamental_frequency = 0;
 				UE_LOG(LogTemp, Log, TEXT("Features empty"));
 			}
-
-			UE_LOG(LogTemp, Log, TEXT("My value: %d"), fundamental_frequency);
-			if (!tracker->trackNewNote(fundamental_frequency)) {
-				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
-			}
-			else {
-				currentPitch = tracker->currentNote->getName();
-			}
-
-			//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::FromInt(wynik).Append(" : wynik host->runPlugin()"));
-			/*const Plugin::Feature &f = host->features.at(0).at(0);
-			for (unsigned int i = 0; i < f.values.size(); ++i) {
-				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Green, FString::SanitizeFloat(f.values[0]));
-			}*/
-			///////////////////////////////////
 
 		} else {
 			fundamental_frequency = 0;
