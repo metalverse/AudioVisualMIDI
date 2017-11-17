@@ -119,11 +119,8 @@ void AMicrophoneInput::Tick(float DeltaTime)
 	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, EVoiceCaptureState::ToString(captureState));
 	if (captureState == EVoiceCaptureState::Ok && bytesAvailable >= 0)
 	{
-		UE_LOG(LogTemp, Log, TEXT("My buffor dealing with: %d samples"), N);
 		UE_LOG(LogTemp, Log, TEXT("Bytes taken: %d"), bytesAvailable);
 		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(bytesAvailable).Append(" bytesAvailable"));
-		unsigned int byt = bytesAvailable;
-		//C
 		maxBytes = bytesAvailable;
 		uint8* buf = new uint8[maxBytes];
 		memset(buf, 0, maxBytes);
@@ -135,12 +132,12 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		float* sampleBuf = new float[samples];
 		bool isSilence = NormalizeDataAndCheckForSilence((int16*)buf, buf, readBytes, sampleBuf, samples, volume);
 		
-		if (!isSilence) {
+		if (!isSilence && samples >= 2048) {
 			//fundamental_frequency = (peak_idx * 44000.0f / (1.0f * N));
 			
 			//////////////// HOST /////////////////////
 			const int frequencyOutput = 0;
-			if (samples >= 2048) host->runPlugin("pyin", "yin", sampleBuf, samples);
+			host->runPlugin("pyin", "yin", sampleBuf, samples);
 
 			auto features = host->getExtractedFeatures();
 			if (features.size() > 0) {
@@ -148,16 +145,15 @@ void AMicrophoneInput::Tick(float DeltaTime)
 				for (auto feature : features) {
 					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::SanitizeFloat(feature).Append(" Hz"));
 					UE_LOG(LogTemp, Log, TEXT("My value: %f"), feature);
-					fundamental_frequency = feature;
-					if (!tracker->trackNewNote(feature)) {
-						GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
-					}
-					else {
-						currentPitch = tracker->currentNote->getName();
-					}
 				}
-				//const auto median_it = features.begin() + features.size() / 2;
-				//fundamental_frequency = (*median_it);
+				const auto median_it = features.begin() + features.size() / 2;
+				fundamental_frequency = (*median_it);
+				if (!tracker->trackNewNote(fundamental_frequency)) {
+					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
+				}
+				else {
+					currentPitch = tracker->currentNote->getName();
+				}
 			}
 			else {
 				fundamental_frequency = 0;
@@ -166,8 +162,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 
 		} else {
 			fundamental_frequency = 0;
-			/*for (int i = 0; i < N / 2; i++)
-			{
+			/*for (int i = 0; i < N / 2; i++){
 				spectrum[i] = 0;
 			}*/
 		}
@@ -179,30 +174,25 @@ void AMicrophoneInput::Tick(float DeltaTime)
 
 }
 
-//IMPLEMENT_PRIMARY_GAME_MODULE(FDefaultGameModule, portaudio, "portaudio");
-
-
 void AMicrophoneInput::SaveStringTextToFile(
-FString SaveDirectory,
-FString FileName,
-FString SaveText
-) {
+	FString SaveDirectory,
+	FString FileName,
+	FString SaveText) {
 
-bool AllowOverwriting = true;
+	bool AllowOverwriting = true;
 
-IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 
+	if (PlatformFile.CreateDirectoryTree(*SaveDirectory))
+	{
+		// Get absolute file path
+		FString AbsoluteFilePath = SaveDirectory + "/" + FileName;
 
-if (PlatformFile.CreateDirectoryTree(*SaveDirectory))
-{
-// Get absolute file path
-FString AbsoluteFilePath = SaveDirectory + "/" + FileName;
-
-// Allow overwriting or file doesn't already exist
-if (AllowOverwriting || !PlatformFile.FileExists(*AbsoluteFilePath))
-{
-FFileHelper::SaveStringToFile(SaveText, *AbsoluteFilePath);
-}
-}
+		// Allow overwriting or file doesn't already exist
+		if (AllowOverwriting || !PlatformFile.FileExists(*AbsoluteFilePath))
+		{
+			FFileHelper::SaveStringToFile(SaveText, *AbsoluteFilePath);
+		}
+	}
 }
 
