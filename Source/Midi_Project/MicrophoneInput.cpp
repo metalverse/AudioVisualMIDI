@@ -143,7 +143,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 			if (features.size() > 0) {
 				std::sort(features.begin(), features.end());
 				for (auto feature : features) {
-					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::SanitizeFloat(feature).Append(" Hz"));
+					//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::SanitizeFloat(feature).Append(" Hz"));
 					UE_LOG(LogTemp, Log, TEXT("My value: %f"), feature);
 				}
 				const auto median_it = features.begin() + features.size() / 2;
