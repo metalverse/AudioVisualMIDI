@@ -22,6 +22,7 @@ class MIDI_PROJECT_API AMicrophoneInput : public AActor
 
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") float volume;
+	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") bool isSilence;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") int fundamental_frequency;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") FString currentPitch;
 	//UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") int N = 4096;
@@ -31,7 +32,7 @@ public:
 
 	TSharedPtr<class IVoiceCapture> voiceCapture;
 	TSharedPtr<class VampPluginHost> vampHost;
-	UPROPERTY(Instanced, EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") USimplePitchTracker* Tracker; USimplePitchTracker* tracker;
+	UPROPERTY(Instanced, EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") USimplePitchTracker* tracker; //USimplePitchTracker* Tracker;
 
 	AMicrophoneInput(const FObjectInitializer& ObjectInitializer);
 	~AMicrophoneInput();

@@ -49,6 +49,7 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 	host = new VampPluginHost(44000, 2048, 1024);
 	//tracker = NewObject <USimplePitchTracker>(this, Namesss); //new USimplePitchTracker();
 	tracker = ObjectInitializer.CreateDefaultSubobject<USimplePitchTracker>(this, TEXT("MyPitchTracker"));
+	isSilence = true;
 }
 
 AMicrophoneInput::~AMicrophoneInput()
@@ -130,7 +131,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		uint32 samples = 0;
 		samples = readBytes / 2;
 		float* sampleBuf = new float[samples];
-		bool isSilence = NormalizeDataAndCheckForSilence((int16*)buf, buf, readBytes, sampleBuf, samples, volume);
+		isSilence = NormalizeDataAndCheckForSilence((int16*)buf, buf, readBytes, sampleBuf, samples, volume);
 		
 		if (!isSilence && samples >= 2048) {
 			//fundamental_frequency = (peak_idx * 44000.0f / (1.0f * N));

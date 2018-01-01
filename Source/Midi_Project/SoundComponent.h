@@ -7,25 +7,25 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FEventSound, int, mode, int, value, int, pitchId, float, volume);
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent), meta = (DisplayName = "SoundComponent"))
+UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent), meta = (DisplayName = "SoundComponent"))
 class MIDI_PROJECT_API USoundComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
-public:	
+public:
 	// Sets default values for this component's properties
 	USoundComponent();
 
 	// Called when the game starts
 	virtual void BeginPlay() override;
-	
+
 	// Called every frame
-	virtual void TickComponent( float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction ) override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	UFUNCTION(BlueprintCallable, Category = "Sound")
-	void callSoundEvent(int mode, int value, int pitchId, float volume);
-	
+		void callSoundEvent(int mode, int value, int pitchId, float volume);
+
 protected:
 	UPROPERTY(BlueprintAssignable, Category = "Sound")
-	FEventSound OnEventSoundDetected;
+		FEventSound OnEventSoundDetected;
 };
