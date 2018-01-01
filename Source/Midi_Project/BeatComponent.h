@@ -26,10 +26,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Beat")
 	void callBeatEvent(int mode, int value);
 
-//private:
-//	// Beat Event Listener
-//	void onEventBeat(int mode, int value) {};
-		
 protected:
 	UPROPERTY(BlueprintAssignable, Category = "Beat")
 	FEventBeat OnEventBeat;
