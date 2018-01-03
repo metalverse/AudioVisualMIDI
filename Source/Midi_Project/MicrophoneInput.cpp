@@ -40,14 +40,10 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-	//PrimaryActorTick.bCanEverTick = true;
 	voiceCapture = FVoiceModule::Get().CreateVoiceCapture();
 	voiceCapture->Init(44000, 1); //wspierane 8000 - 48000Hz
 	voiceCapture->Start();
-	spectrum.Init(0, N / 2);
-	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, key.c_str());
-	host = new VampPluginHost(44000, 2048, 1024);
-	//tracker = NewObject <USimplePitchTracker>(this, Namesss); //new USimplePitchTracker();
+	host = new VampPluginHost(44000, vampBlockSize, vampStepSize);
 	tracker = ObjectInitializer.CreateDefaultSubobject<USimplePitchTracker>(this, TEXT("MyPitchTracker"));
 	isSilence = true;
 }
@@ -65,7 +61,7 @@ void AMicrophoneInput::BeginPlay()
 }
 
 template<typename T>
-bool AMicrophoneInput::NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8, int32 buffSize, float* outBuf, uint32 samples, float& vol)
+bool AMicrophoneInput::NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8, int32 buffSize, float* outBuf, uint32 samples, float& vol, float &vol2)
 {
 	if (buffSize == 0)
 	{
@@ -89,18 +85,19 @@ bool AMicrophoneInput::NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8
 	static float Threshold = 75.0 * 75.0;
 
 	int16_t sample;
-	float totalVolume = 0;
+	float totalSquare = 0;
 	for (uint32 i = 0; i < samples; i++)
 	{
 		sample = (inBuff8[i * 2 + 1] << 8) | inBuff8[i * 2];
 		outBuf[i] = float(sample) / 32768.0f;
-		if (i < N) {
-			totalVolume += outBuf[i] * outBuf[i];
-		}
+		totalSquare += sample * sample;
 	}
-	totalVolume = totalVolume / samples;
-	totalVolume = FMath::Sqrt(totalVolume);
-	vol = 20 * log10f(totalVolume) + 80;
+	float meanSquare = 2 * totalSquare / samples;
+	float rms = FMath::Sqrt(meanSquare);
+	float amplitude = rms / 32768.0f;
+	vol = 20 * log10f(amplitude) + 80;
+	vol2 = amplitude * 100;
+
 	return AverageMeanSquare < Threshold;
 }
 
@@ -121,7 +118,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 	if (captureState == EVoiceCaptureState::Ok && bytesAvailable >= 0)
 	{
 		UE_LOG(LogTemp, Log, TEXT("Bytes taken: %d"), bytesAvailable);
-		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(bytesAvailable).Append(" bytesAvailable"));
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(bytesAvailable).Append(" bytesAvailable"));
 		maxBytes = bytesAvailable;
 		uint8* buf = new uint8[maxBytes];
 		memset(buf, 0, maxBytes);
@@ -131,11 +128,9 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		uint32 samples = 0;
 		samples = readBytes / 2;
 		float* sampleBuf = new float[samples];
-		isSilence = NormalizeDataAndCheckForSilence((int16*)buf, buf, readBytes, sampleBuf, samples, volume);
+		isSilence = NormalizeDataAndCheckForSilence((int16*)buf, buf, readBytes, sampleBuf, samples, volumedB, volumeAmplitude);
 		
 		if (!isSilence && samples >= 2048) {
-			//fundamental_frequency = (peak_idx * 44000.0f / (1.0f * N));
-			
 			//////////////// HOST /////////////////////
 			const int frequencyOutput = 0;
 			host->runPlugin("pyin", "yin", sampleBuf, samples);
@@ -163,9 +158,6 @@ void AMicrophoneInput::Tick(float DeltaTime)
 
 		} else {
 			fundamental_frequency = 0;
-			/*for (int i = 0; i < N / 2; i++){
-				spectrum[i] = 0;
-			}*/
 		}
 		delete[] sampleBuf;
 	}

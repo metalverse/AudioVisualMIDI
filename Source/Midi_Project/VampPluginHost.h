@@ -55,8 +55,8 @@ private:
 	int blockSize;
 	int stepSize;
 	int overlapSize;
-	PluginLoader *loader2;
-	Plugin *plugin2;
+	PluginLoader *loaderPyin;
+	Plugin *pluginPyin;
 public:
 	Plugin::FeatureSet features;
 	std::vector<float> extractedFeatures;

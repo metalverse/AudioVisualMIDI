@@ -21,18 +21,19 @@ class MIDI_PROJECT_API AMicrophoneInput : public AActor
 	
 
 public:
-	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") float volume;
+	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") float volumedB;
+	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") float volumeAmplitude;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") bool isSilence;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") int fundamental_frequency;
-	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") FString currentPitch;
-	//UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") int N = 4096;
-	
-	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") TArray<float> spectrum;
+	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") FString currentPitch;	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") int vampBlockSize = 2048;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") int vampStepSize = 1024;
+	//UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") TArray<float> spectrum;
 	
 
 	TSharedPtr<class IVoiceCapture> voiceCapture;
 	TSharedPtr<class VampPluginHost> vampHost;
-	UPROPERTY(Instanced, EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") USimplePitchTracker* tracker; //USimplePitchTracker* Tracker;
+	UPROPERTY(Instanced, EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") USimplePitchTracker* tracker;
 
 	AMicrophoneInput(const FObjectInitializer& ObjectInitializer);
 	~AMicrophoneInput();
@@ -48,10 +49,11 @@ public:
 
 private:
 	template<typename T>
-	bool NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8, int32 buffSize, float* outBuf, uint32 outBuffSize, float& volume);
+	bool NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8, int32 buffSize, float* outBuf, uint32 outBuffSize, float& volumedB, float& volumeAmplitude);
 	int tmpCounter = 0;
 	float* vector;
 	float const silenceTreshold = 65.f*65.f;
 	bool finished = true;
 	static const unsigned int N = 4096;
+	const unsigned int sampleRate = 44100.0f;
 };

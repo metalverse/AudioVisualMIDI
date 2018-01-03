@@ -13,24 +13,25 @@ std::vector<float> VampPluginHost::getExtractedFeatures() {
 VampPluginHost::VampPluginHost(float sR, int bSize, int sSize)
 {
 	sampleRate = sR;
-	loader2 = PluginLoader::getInstance();
-	//PluginLoader::PluginKey key = loader2->composePluginKey("pyin", "yin");
-	PluginLoader::PluginKey key = loader2->composePluginKey("pyin", "yin");
-	plugin2 = loader2->loadPlugin(key, sR, PluginLoader::ADAPT_ALL_SAFE);
+	loaderPyin = PluginLoader::getInstance();
+
+	PluginLoader::PluginKey key = loaderPyin->composePluginKey("pyin", "yin");
+
+	pluginPyin = loaderPyin->loadPlugin(key, sR, PluginLoader::ADAPT_ALL_SAFE);
 	vector<string> path = PluginHostAdapter::getPluginPath();
 	//if(path.size() > 0) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, path[0].c_str());
-	if (!plugin2) {
+	if (!pluginPyin) {
 		UE_LOG(LogTemp, Log, TEXT("Error loading plugin!"));
 		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, "BLAD WCZYTYWANIA WTYCZKI");
 	}
 	else {
-		UE_LOG(LogTemp, Log, TEXT("Wtyczka wczytana!"));
+		UE_LOG(LogTemp, Log, TEXT("Plugin loaded!"));
 		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, plugin2->getIdentifier().c_str());
 		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, "Wtyczka wczytana!");
 	}
 	
-	blockSize = plugin2->getPreferredBlockSize();
-	stepSize = plugin2->getPreferredStepSize();
+	blockSize = pluginPyin->getPreferredBlockSize();
+	stepSize = pluginPyin->getPreferredStepSize();
 	UE_LOG(LogTemp, Log, TEXT("Preferred block size: %d"), blockSize);
 	UE_LOG(LogTemp, Log, TEXT("Preferred step size: %d"), stepSize);
 	
@@ -38,7 +39,7 @@ VampPluginHost::VampPluginHost(float sR, int bSize, int sSize)
 		blockSize = bSize;
 	}
 	if (stepSize == 0) {
-		if (plugin2->getInputDomain() == Plugin::FrequencyDomain) {
+		if (pluginPyin->getInputDomain() == Plugin::FrequencyDomain) {
 			stepSize = blockSize / 2;
 		}
 		else {
@@ -47,7 +48,7 @@ VampPluginHost::VampPluginHost(float sR, int bSize, int sSize)
 	}
 	else if (stepSize > blockSize) {
 		//cerr << "WARNING: stepSize " << stepSize << " > blockSize " << blockSize << ", resetting blockSize to ";
-		if (plugin2->getInputDomain() == Plugin::FrequencyDomain) {
+		if (pluginPyin->getInputDomain() == Plugin::FrequencyDomain) {
 			blockSize = stepSize * 2;
 		}
 		else {
@@ -78,7 +79,7 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 	//float *filebuf = new float[blockSize * channels];
 	int blockLeft = inputSize;
 
-	if (!plugin2->initialise(channels, stepSize, blockSize)) {
+	if (!pluginPyin->initialise(channels, stepSize, blockSize)) {
 		UE_LOG(LogTemp, Log, TEXT("Error initializing plugin!"));
 		return -1;
 	}
@@ -136,7 +137,7 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 
 		rt = RealTime::frame2RealTime(currentStep * stepSize, sampleRate);
 		UE_LOG(LogTemp, Log, TEXT("Processing. Current step: %d"), currentStep);
-		features = plugin2->process(plugbuf, rt);
+		features = pluginPyin->process(plugbuf, rt);
 
 		if (!(features.find(0) == features.end())) {
 			for (size_t i = 0; i < features.at(0).size(); ++i) {
