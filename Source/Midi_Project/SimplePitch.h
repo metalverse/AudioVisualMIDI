@@ -21,7 +21,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SoundParameters") int getOctave() { return octave; };
 	UFUNCTION(BlueprintCallable, Category = "SoundParameters") int getTime() { return time; };
 	UFUNCTION(BlueprintCallable, Category = "SoundParameters") int getPitchId() { return pitchId; };
-	void setParams(FString name, float freq, int octave, int time, int pitchId);
+	UFUNCTION(BlueprintCallable, Category = "SoundParameters") int getMidiNoteId() { return midiNoteId; };
+	void setParams(FString name, float freq, int octave, int time, int pitchId, int midiId);
 	void incrementTime(int value) { time += value; };
 
 private:
@@ -30,4 +31,5 @@ private:
 	float frequency;
 	int time;
 	int pitchId;
+	int midiNoteId;
 };

@@ -11,9 +11,9 @@ USimplePitchTracker::USimplePitchTracker(const FObjectInitializer& ObjectInitial
 	//pitchTable.Init(ObjectInitializer.CreateDefaultSubobject<USimplePitch>(this, TEXT("NewPitch")), notesToRecognize);
 	initPitchTable(ObjectInitializer);
 	currentNote = ObjectInitializer.CreateDefaultSubobject<USimplePitch>(this, TEXT("currentPitch"));
-	currentNote->setParams("None", 0, 0, 0, 0);
+	currentNote->setParams("None", 0, 0, 0, 0, 0);
 	USimplePitch* pitch = ObjectInitializer.CreateDefaultSubobject<USimplePitch>(this, TEXT("tmpPitch"));
-	pitch->setParams("None", 0, 0, 0, 0);
+	pitch->setParams("None", 0, 0, 0, 0, 0);
 	trackedPitches.Add(pitch);
 	numberOfTrackingPitches++;
 	/*for (int i = 0; i < notesToRecognize; i++) {
@@ -32,12 +32,13 @@ void USimplePitchTracker::initPitchTable(const FObjectInitializer& ObjectInitial
 {
 	float noteFreq = 16.3516;
 	int id = 0;
+	int midiId = 12;
 	FString toneNames[12] = { "C","C#","D","D#","E","F","F#","G","G#","A","A#","H" };
 	for (int octave = 0; octave < octavesToRecognize; octave++) {
 		for (int note = 0; note < 12; note++) {
 			FString name = toneNames[note] + FString::FromInt(octave);
 			USimplePitch* pitch = ObjectInitializer.CreateDefaultSubobject<USimplePitch>(this, FName(*name));
-			pitch->setParams(name, noteFreq, octave, 0, id++);
+			pitch->setParams(name, noteFreq, octave, 0, id++, midiId++);
 			pitchTable.Add(pitch);
 			float test2 = noteFreq;
 			UE_LOG(LogTemp, Log, TEXT("My note: %s"), *name);
@@ -102,7 +103,7 @@ void USimplePitchTracker::addNewPitchToTrackedList(USimplePitch* myNote)
 	if (!myNote) return;
 	if (!myNote->IsValidLowLevel()) return;
 	USimplePitch* pitch = NewObject<USimplePitch>(this);
-	pitch->setParams(myNote->getName(), myNote->getFrequency(), myNote->getOctave(), 1, myNote->getPitchId());
+	pitch->setParams(myNote->getName(), myNote->getFrequency(), myNote->getOctave(), 1, myNote->getPitchId(), myNote->getMidiNoteId());
 	trackedPitches.Add(pitch);
 	++numberOfTrackingPitches;
 	OnSoundRecordedDelegate.Broadcast(pitch->getPitchId());

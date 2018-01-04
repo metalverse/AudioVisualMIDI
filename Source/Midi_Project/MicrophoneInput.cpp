@@ -82,7 +82,6 @@ bool AMicrophoneInput::NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8
 		SumMeanSquare += (Diff * Diff);
 	}
 	float AverageMeanSquare = SumMeanSquare / IterSize;
-	static float Threshold = 75.0 * 75.0;
 
 	int16_t sample;
 	float totalSquare = 0;
@@ -95,10 +94,10 @@ bool AMicrophoneInput::NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8
 	float meanSquare = 2 * totalSquare / samples;
 	float rms = FMath::Sqrt(meanSquare);
 	float amplitude = rms / 32768.0f;
-	vol = 20 * log10f(amplitude) + 80;
+	vol = 20 * log10f(amplitude) + 85;
 	vol2 = amplitude * 100;
 
-	return AverageMeanSquare < Threshold;
+	return AverageMeanSquare < silenceTreshold;
 }
 
 // Called every frame
@@ -117,8 +116,8 @@ void AMicrophoneInput::Tick(float DeltaTime)
 	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, EVoiceCaptureState::ToString(captureState));
 	if (captureState == EVoiceCaptureState::Ok && bytesAvailable >= 0)
 	{
-		UE_LOG(LogTemp, Log, TEXT("Bytes taken: %d"), bytesAvailable);
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(bytesAvailable).Append(" bytesAvailable"));
+		//UE_LOG(LogTemp, Log, TEXT("Bytes taken: %d"), bytesAvailable);
+		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(bytesAvailable).Append(" bytesAvailable"));
 		maxBytes = bytesAvailable;
 		uint8* buf = new uint8[maxBytes];
 		memset(buf, 0, maxBytes);
@@ -130,12 +129,11 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		float* sampleBuf = new float[samples];
 		isSilence = NormalizeDataAndCheckForSilence((int16*)buf, buf, readBytes, sampleBuf, samples, volumedB, volumeAmplitude);
 		
-		if (!isSilence && samples >= 2048) {
+		if (!isSilence && samples >= (unsigned)vampStepSize) {
 			//////////////// HOST /////////////////////
-			const int frequencyOutput = 0;
 			host->runPlugin("pyin", "yin", sampleBuf, samples);
-
 			auto features = host->getExtractedFeatures();
+
 			if (features.size() > 0) {
 				std::sort(features.begin(), features.end());
 				for (auto feature : features) {
@@ -144,11 +142,26 @@ void AMicrophoneInput::Tick(float DeltaTime)
 				}
 				const auto median_it = features.begin() + features.size() / 2;
 				fundamental_frequency = (*median_it);
-				if (!tracker->trackNewNote(fundamental_frequency)) {
-					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
+				if (fundamental_frequency > 0) {
+					if (!tracker->trackNewNote(fundamental_frequency)) {
+						GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
+					}
+					else {
+						const int trackedSoundToMidiNote = tracker->currentNote->getMidiNoteId();
+						if (bufferedMidiNotes.Num() == 0) {
+							bufferedMidiNotes.Add(trackedSoundToMidiNote);
+						}
+						else if (bufferedMidiNotes.Last() == trackedSoundToMidiNote) {
+							// Handle incrementing
+						}
+						else {
+							bufferedMidiNotes.Add(trackedSoundToMidiNote);
+						}
+						currentPitch = tracker->currentNote->getName();
+					}
 				}
 				else {
-					currentPitch = tracker->currentNote->getName();
+					UE_LOG(LogTemp, Log, TEXT("Unrecognized frequency"));
 				}
 			}
 			else {

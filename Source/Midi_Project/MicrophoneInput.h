@@ -26,9 +26,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") bool isSilence;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") int fundamental_frequency;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") FString currentPitch;	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") int vampBlockSize = 2048;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") int vampStepSize = 1024;
-	//UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") TArray<float> spectrum;
+	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") int vampBlockSize = 2048;
+	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") int vampStepSize = 1024;
+	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float silenceTreshold = 75.f * 75.f;
+	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") TArray<int> bufferedMidiNotes;
 	
 
 	TSharedPtr<class IVoiceCapture> voiceCapture;
@@ -50,10 +51,9 @@ public:
 private:
 	template<typename T>
 	bool NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8, int32 buffSize, float* outBuf, uint32 outBuffSize, float& volumedB, float& volumeAmplitude);
-	int tmpCounter = 0;
-	float* vector;
-	float const silenceTreshold = 65.f*65.f;
-	bool finished = true;
+	//int tmpCounter = 0;
+	//float* vector;
+	//bool finished = true;
 	static const unsigned int N = 4096;
 	const unsigned int sampleRate = 44100.0f;
 };

@@ -76,7 +76,6 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 	int finalStepsRemaining = max(1, (inputSize / stepSize));
 	int currentStep = 0;
 	
-	//float *filebuf = new float[blockSize * channels];
 	int blockLeft = inputSize;
 
 	if (!pluginPyin->initialise(channels, stepSize, blockSize)) {
@@ -147,6 +146,9 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 					if (pluginFreq > 0) {
 						extractedFeatures.push_back(pluginFreq);
 					}
+					else {
+						extractedFeatures.push_back(-1.0f);
+					}
 					UE_LOG(LogTemp, Log, TEXT("Value: %f"), pluginFreq);
 				}
 			}
@@ -174,7 +176,6 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 		
 		++currentStep;
 	} while (finalStepsRemaining > 0);
-	UE_LOG(LogTemp, Log, TEXT("Plugin loaded!"));
 	return 0;
 }
 
