@@ -42,10 +42,25 @@ public:
 	virtual void Tick( float DeltaSeconds ) override;
 
 	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
+		void StartRecordingRecognizedFrequencies();
+
+	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
+		void StopRecordingRecognizedFrequencies();
+
+	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
+		void ResetRecognizedFrequenciesBuffer();
+
+	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
 		void SaveStringTextToFile(
 			FString SaveDirectory,
 			FString FileName,
 			FString SaveText
+		);
+
+	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
+		void SaveRecognizedFrequenciesToFile(
+			FString SaveDirectory,
+			FString FileName
 		);
 
 private:
@@ -56,4 +71,6 @@ private:
 	//bool finished = true;
 	static const unsigned int N = 4096;
 	const unsigned int sampleRate = 44100.0f;
+	bool isRecordingRecognizedFrequencies = false;
+	std::vector<float> recognizedFrequenciesToSave;
 };

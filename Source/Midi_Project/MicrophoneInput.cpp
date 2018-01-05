@@ -180,6 +180,21 @@ void AMicrophoneInput::Tick(float DeltaTime)
 
 }
 
+void AMicrophoneInput::StartRecordingRecognizedFrequencies()
+{
+	isRecordingRecognizedFrequencies = true;
+}
+
+void AMicrophoneInput::StopRecordingRecognizedFrequencies()
+{
+	isRecordingRecognizedFrequencies = false;
+}
+
+void AMicrophoneInput::ResetRecognizedFrequenciesBuffer()
+{
+	recognisedFrequenciesToSave.clear();
+}
+
 void AMicrophoneInput::SaveStringTextToFile(
 	FString SaveDirectory,
 	FString FileName,
@@ -198,6 +213,32 @@ void AMicrophoneInput::SaveStringTextToFile(
 		if (AllowOverwriting || !PlatformFile.FileExists(*AbsoluteFilePath))
 		{
 			FFileHelper::SaveStringToFile(SaveText, *AbsoluteFilePath);
+		}
+	}
+}
+
+void AMicrophoneInput::SaveRecognizedFrequenciesToFile(
+	FString SaveDirectory,
+	FString FileName) {
+
+	bool AllowOverwriting = true;
+
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+
+	FString textToSave = "";
+	for (float const& value : recognizedFrequenciesToSave) {
+		textToSave.Append(FString::SanitizeFloat(value)).Append("\n");
+	}
+
+	if (PlatformFile.CreateDirectoryTree(*SaveDirectory))
+	{
+		// Get absolute file path
+		FString AbsoluteFilePath = SaveDirectory + "/" + FileName;
+
+		// Allow overwriting or file doesn't already exist
+		if (AllowOverwriting || !PlatformFile.FileExists(*AbsoluteFilePath))
+		{
+			FFileHelper::SaveStringToFile(textToSave, *AbsoluteFilePath);
 		}
 	}
 }
