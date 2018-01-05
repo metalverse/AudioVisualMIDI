@@ -143,12 +143,12 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 				const Plugin::Feature &f = features.at(0).at(i);
 				for (size_t j = 0; j < f.values.size(); ++j) {
 					float pluginFreq = f.values[j];
-					if (pluginFreq > 0) {
+					//if (pluginFreq > 0) {
 						extractedFeatures.push_back(pluginFreq);
-					}
-					else {
-						extractedFeatures.push_back(-1.0f);
-					}
+					//}
+					//else {
+					//	extractedFeatures.push_back(-1.0f);
+					//}
 					UE_LOG(LogTemp, Log, TEXT("Value: %f"), pluginFreq);
 				}
 			}

@@ -142,6 +142,9 @@ void AMicrophoneInput::Tick(float DeltaTime)
 				}
 				const auto median_it = features.begin() + features.size() / 2;
 				fundamental_frequency = (*median_it);
+				if (isRecordingRecognizedFrequencies) {
+					recognizedFrequenciesToSave.push_back(fundamental_frequency);
+				}
 				if (fundamental_frequency > 0) {
 					if (!tracker->trackNewNote(fundamental_frequency)) {
 						GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
@@ -192,7 +195,7 @@ void AMicrophoneInput::StopRecordingRecognizedFrequencies()
 
 void AMicrophoneInput::ResetRecognizedFrequenciesBuffer()
 {
-	recognisedFrequenciesToSave.clear();
+	recognizedFrequenciesToSave.clear();
 }
 
 void AMicrophoneInput::SaveStringTextToFile(
@@ -227,7 +230,7 @@ void AMicrophoneInput::SaveRecognizedFrequenciesToFile(
 
 	FString textToSave = "";
 	for (float const& value : recognizedFrequenciesToSave) {
-		textToSave.Append(FString::SanitizeFloat(value)).Append("\n");
+		textToSave.Append(FString::SanitizeFloat(value)).Append(LINE_TERMINATOR);
 	}
 
 	if (PlatformFile.CreateDirectoryTree(*SaveDirectory))

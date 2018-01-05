@@ -6,6 +6,7 @@
 #include "Voice.h"
 #include "OnlineSubsystemUtils.h"
 #include <cmath>
+#include <vector>
 #include "CoreMisc.h"
 #include "SimplePitchTracker.h"
 #include "SimplePitch.h"
