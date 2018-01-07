@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "{AA73564D-47A8-8682-3D54-BBAFA1EB8F1A}",
+	"EngineAssociation": "{FDBD57F7-4982-758E-C3CC-E7A015FF318F}",
 	"Category": "",
 	"Description": "",
 	"Modules": [
@@ -24,5 +24,8 @@
 			"Name": "SoundVisualizations",
 			"Enabled": true
 		}
+	],
+	"TargetPlatforms": [
+		"WindowsNoEditor"
 	]
 }
