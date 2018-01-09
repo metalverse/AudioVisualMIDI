@@ -5,61 +5,82 @@
 #include <iostream>
 
 
-std::vector<float> VampPluginHost::getExtractedFeatures() {
+std::vector<std::pair<int, float>> VampPluginHost::getExtractedFeatures() {
 	return extractedFeatures;
 }
+
+bool VampPluginHost::initPlugin(Plugin* &pluginToInit, const std::string &libName, const std::string &plugName, pluginParams &params, int bSize, int sSize) {
+	
+	PluginLoader::PluginKey key = loader->composePluginKey(libName, plugName);
+
+	pluginToInit = loader->loadPlugin(key, sampleRate, PluginLoader::ADAPT_ALL_SAFE);
+	
+	if (!pluginToInit) {
+		UE_LOG(LogTemp, Log, TEXT("Error loading plugin!"));
+		return false;
+	}
+	else {
+		UE_LOG(LogTemp, Log, TEXT("Plugin loaded! (%s)"), pluginToInit->getIdentifier().c_str());
+	}
+
+	params.pBlockSize = pluginToInit->getPreferredBlockSize();
+	params.pStepSize = pluginToInit->getPreferredStepSize();
+	UE_LOG(LogTemp, Log, TEXT("Preferred block size: %d"), params.pBlockSize);
+	UE_LOG(LogTemp, Log, TEXT("Preferred step size: %d"), params.pStepSize);
+
+	if (params.pBlockSize == 0) {
+		params.pBlockSize = bSize;
+	}
+	if (params.pStepSize == 0) {
+		if (pluginToInit->getInputDomain() == Plugin::FrequencyDomain) {
+			params.pStepSize = params.pBlockSize / 2;
+		}
+		else {
+			params.pStepSize = params.pBlockSize;
+		}
+	}
+	else if (params.pStepSize > params.pBlockSize) {
+		if (pluginToInit->getInputDomain() == Plugin::FrequencyDomain) {
+			params.pBlockSize = params.pStepSize * 2;
+		}
+		else {
+			params.pBlockSize = params.pStepSize;
+		}
+	}
+	params.pOverlapSize = params.pBlockSize - params.pStepSize;
+	params.pBlockSize = bSize;
+	params.pStepSize = sSize;
+	UE_LOG(LogTemp, Log, TEXT("Block size: %d"), params.pBlockSize);
+	UE_LOG(LogTemp, Log, TEXT("Step size: %d"), params.pStepSize);
+
+	for(auto &parameter : pluginToInit->getParameterDescriptors()) {
+		FString paramId = parameter.identifier.c_str();
+		UE_LOG(LogTemp, Log, TEXT("Parameter ID: %s ||| Default value: %f ||| Min: %f ||| Max: %f"), *paramId, parameter.defaultValue, parameter.minValue, parameter.maxValue);
+	}
+
+	return true;
+}
+
 
 
 VampPluginHost::VampPluginHost(float sR, int bSize, int sSize)
 {
 	sampleRate = sR;
-	loaderPyin = PluginLoader::getInstance();
 
-	PluginLoader::PluginKey key = loaderPyin->composePluginKey("pyin", "yin");
-
-	pluginPyin = loaderPyin->loadPlugin(key, sR, PluginLoader::ADAPT_ALL_SAFE);
 	vector<string> path = PluginHostAdapter::getPluginPath();
-	//if(path.size() > 0) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, path[0].c_str());
-	if (!pluginPyin) {
-		UE_LOG(LogTemp, Log, TEXT("Error loading plugin!"));
-		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, "BLAD WCZYTYWANIA WTYCZKI");
-	}
-	else {
-		UE_LOG(LogTemp, Log, TEXT("Plugin loaded!"));
-		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, plugin2->getIdentifier().c_str());
-		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, "Wtyczka wczytana!");
-	}
-	
-	blockSize = pluginPyin->getPreferredBlockSize();
-	stepSize = pluginPyin->getPreferredStepSize();
-	UE_LOG(LogTemp, Log, TEXT("Preferred block size: %d"), blockSize);
-	UE_LOG(LogTemp, Log, TEXT("Preferred step size: %d"), stepSize);
-	
-	if (blockSize == 0) {
-		blockSize = bSize;
-	}
-	if (stepSize == 0) {
-		if (pluginPyin->getInputDomain() == Plugin::FrequencyDomain) {
-			stepSize = blockSize / 2;
-		}
-		else {
-			stepSize = blockSize;
-		}
-	}
-	else if (stepSize > blockSize) {
-		//cerr << "WARNING: stepSize " << stepSize << " > blockSize " << blockSize << ", resetting blockSize to ";
-		if (pluginPyin->getInputDomain() == Plugin::FrequencyDomain) {
-			blockSize = stepSize * 2;
-		}
-		else {
-			blockSize = stepSize;
-		}
-		//cerr << blockSize << endl;
-	}
-	overlapSize = blockSize - stepSize;
-	stepSize = sSize;
-	UE_LOG(LogTemp, Log, TEXT("Block size: %d"), blockSize);
-	UE_LOG(LogTemp, Log, TEXT("Step size: %d"), stepSize);
+	FString searchDirectory = path[0].c_str();
+	UE_LOG(LogTemp, Log, TEXT("Plugin search directory: %s"), *searchDirectory);
+
+	loader = PluginLoader::getInstance();
+
+	initPlugin(pluginPyin, "pyin", "yin", pyinParams, bSize, sSize);
+	initPlugin(pluginOnsetDetector, "vamp-example-plugins", "percussiononsets", onsetDetectorParams, bSize, sSize);
+
+	pluginOnsetDetector->setParameter("treshold", 2.8f);
+	pluginOnsetDetector->setParameter("sensitivity", 40.0f);
+
+	UE_LOG(LogTemp, Log, TEXT("Parameter ID: percussiononsets ||| Current treshold: %f ||| Current sensitivity: %f"), pluginOnsetDetector->getParameter("treshold"), pluginOnsetDetector->getParameter("sensitivity"));
+
 }
 
 VampPluginHost::~VampPluginHost(){}
@@ -70,15 +91,29 @@ using namespace std;
 
 int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int inputSize)
 {
+	Plugin* runningPlugin;
+	pluginParams params;
+	if (soname == "pyin" && id == "yin") {
+		runningPlugin = pluginPyin;
+		params = pyinParams;
+	}
+	else if (soname == "vamp-example-plugins" && id == "percussiononsets") {
+		runningPlugin = pluginOnsetDetector;
+		params = onsetDetectorParams;
+	}
+	else {
+		return 1;
+	}
+
 	UE_LOG(LogTemp, Log, TEXT("In plugin, size: %d"), inputSize);
 	int channels = 1;
 	
-	int finalStepsRemaining = max(1, (inputSize / stepSize));
+	int finalStepsRemaining = max(1, (inputSize / params.pStepSize));
 	int currentStep = 0;
 	
 	int blockLeft = inputSize;
 
-	if (!pluginPyin->initialise(channels, stepSize, blockSize)) {
+	if (!runningPlugin->initialise(channels, params.pStepSize, params.pBlockSize)) {
 		UE_LOG(LogTemp, Log, TEXT("Error initializing plugin!"));
 		return -1;
 	}
@@ -89,19 +124,19 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 		int count = 0;
 		if ((currentStep == 0)) {
 			leftRange = 0;
-			if (blockLeft > blockSize) {
-				rightRange = blockSize;
-				blockLeft -= blockSize;
+			if (blockLeft > params.pBlockSize) {
+				rightRange = params.pBlockSize;
+				blockLeft -= params.pBlockSize;
 			} else {
 				rightRange = blockLeft;
 				blockLeft = 0;
 				finalStepsRemaining = 0;
 			}
 		} else {
-			if (blockLeft > stepSize) {
-				leftRange += stepSize;
-				rightRange += stepSize;
-				blockLeft -= stepSize;
+			if (blockLeft > params.pStepSize) {
+				leftRange += params.pStepSize;
+				rightRange += params.pStepSize;
+				blockLeft -= params.pStepSize;
 			} else {
 				leftRange += blockLeft;
 				rightRange += blockLeft;
@@ -113,7 +148,7 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 		
 		float **plugbuf = new float*[channels];
 		for (int c = 0; c < channels; ++c) {
-			plugbuf[c] = new float[blockSize + 2];
+			plugbuf[c] = new float[params.pBlockSize + 2];
 		}
 		for (int c = 0; c < channels; ++c) {
 			int j = 0;
@@ -122,138 +157,76 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 				//UE_LOG(LogTemp, Log, TEXT("inputBuffer: %f"), plugbuf[c][j]);
 				++j;
 			}
-			while (j < blockSize) {
+			while (j < params.pBlockSize) {
 				plugbuf[c][j] = 0.0f;
 				++j;
 			}
 		}
-		
-				//Plugin::OutputList outputs = plugin->getOutputDescriptors();
-				//Plugin::OutputDescriptor od;
-		
+		Plugin::OutputList outputs = runningPlugin->getOutputDescriptors();
+		Plugin::OutputDescriptor od;
 
 		RealTime rt;
 
-		rt = RealTime::frame2RealTime(currentStep * stepSize, sampleRate);
-		UE_LOG(LogTemp, Log, TEXT("Processing. Current step: %d"), currentStep);
-		features = pluginPyin->process(plugbuf, rt);
+		if (outputs.empty()) {
+			UE_LOG(LogTemp, Log, TEXT("Error, plugin has no outputs!"));
+		}
+		
+		rt = RealTime::frame2RealTime(currentStep * params.pStepSize, sampleRate);
 
+		UE_LOG(LogTemp, Log, TEXT("Processing. Current step: %d"), currentStep);
+		features = runningPlugin->process(plugbuf, rt);
+
+		od = outputs[0]; //outputsNo = 0
+
+		if (id == "percussiononsets")  {
+			UE_LOG(LogTemp, Log, TEXT("RealTime: %s"), rt.toString().c_str());
+			if (!(features.find(0) == features.end())) {
+				UE_LOG(LogTemp, Log, TEXT("Output 0 has %zu features, values: %zu, RealTime: "), features.at(0).size(), features.at(0).at(0).values.size(), rt.toText().c_str());
+			} else if (!(features.find(1) == features.end())) {
+				UE_LOG(LogTemp, Log, TEXT("Output 1 has %zu features"), features.at(1).size());
+			}
+		}
+		int featureCount = -1;
 		if (!(features.find(0) == features.end())) {
+			
 			for (size_t i = 0; i < features.at(0).size(); ++i) {
 				const Plugin::Feature &f = features.at(0).at(i);
+				bool haveRt = false;
+				if (od.sampleType == Plugin::OutputDescriptor::VariableSampleRate) {
+					rt = f.timestamp;
+					haveRt = true;
+				}
+				else if (od.sampleType == Plugin::OutputDescriptor::FixedSampleRate) {
+					int n = featureCount + 1;
+					if (f.hasTimestamp) {
+						n = int(round(toSeconds(f.timestamp) * od.sampleRate));
+					}
+					rt = RealTime::fromSeconds(double(n) / od.sampleRate);
+					haveRt = true;
+					featureCount = n;
+				}
+				double sec = toSeconds(rt);
+				int frame = int(round(sec * sampleRate));
+				if (f.values.size() == 0) {
+					extractedFeatures.emplace_back(frame, 0.0f);
+					UE_LOG(LogTemp, Log, TEXT("FRAME: %d"), frame);
+				}
 				for (size_t j = 0; j < f.values.size(); ++j) {
-					float pluginFreq = f.values[j];
-					//if (pluginFreq > 0) {
-						extractedFeatures.push_back(pluginFreq);
-					//}
-					//else {
-					//	extractedFeatures.push_back(-1.0f);
-					//}
-					UE_LOG(LogTemp, Log, TEXT("Value: %f"), pluginFreq);
+					float outputValue = f.values[j];
+					extractedFeatures.emplace_back(frame, outputValue);
+					UE_LOG(LogTemp, Log, TEXT("Value: %f"), outputValue);
 				}
 			}
 		}
-		//UE_LOG(LogTemp, Log, TEXT("After process"));
-		//extractedFeatures
-		/*if (!(features.find(0) == features.end())) {
-			UE_LOG(LogTemp, Log, TEXT("Features!"));
-			for (size_t i = 0; i < features.at(0).size(); ++i) {
-				const Plugin::Feature &f = features.at(0).at(i);
-				for (size_t j = 0; j < f.values.size(); ++j) {
-					UE_LOG(LogTemp, Log, TEXT("Value: %f"), f.values[j]);
-				}
-			}
-		} else {
-			UE_LOG(LogTemp, Log, TEXT("Features empty"));
-		}*/
-		//const Plugin::Feature &f = features.at(0).at(0);
-
-		/*for (unsigned int i = 0; i < f.values.size(); ++i) {
-			string sth = std::to_string(f.values[i]);
-			UE_LOG(LogTemp, Log, TEXT("Value: %f"), f.values[i]);
-		}*/
 		delete plugbuf;
-		
 		++currentStep;
 	} while (finalStepsRemaining > 0);
 	return 0;
 }
 
-static double toSeconds(const RealTime &time)
+double VampPluginHost::toSeconds(const RealTime &time)
 {
 	return time.sec + double(time.nsec + 1) / 1000000000.0;
-}
-
-void VampPluginHost::printFeatures(int frame, int sr,
-	const Plugin::OutputDescriptor &output, int outputNo,
-	const Plugin::FeatureSet &features, ofstream *out, bool useFrames)
-{
-	static int featureCount = -1;
-
-	if (features.find(outputNo) == features.end()) return;
-
-	for (size_t i = 0; i < features.at(outputNo).size(); ++i) {
-
-		const Plugin::Feature &f = features.at(outputNo).at(i);
-
-		bool haveRt = false;
-		RealTime rt;
-
-		if (output.sampleType == Plugin::OutputDescriptor::VariableSampleRate) {
-			rt = f.timestamp;
-			haveRt = true;
-		}
-		else if (output.sampleType == Plugin::OutputDescriptor::FixedSampleRate) {
-			int n = featureCount + 1;
-			if (f.hasTimestamp) {
-				n = int(round(toSeconds(f.timestamp) * output.sampleRate));
-			}
-			rt = RealTime::fromSeconds(double(n) / output.sampleRate);
-			haveRt = true;
-			featureCount = n;
-		}
-
-		if (useFrames) {
-
-			int displayFrame = frame;
-
-			if (haveRt) {
-				displayFrame = RealTime::realTime2Frame(rt, sr);
-			}
-
-			(out ? *out : cout) << displayFrame;
-
-			if (f.hasDuration) {
-				displayFrame = RealTime::realTime2Frame(f.duration, sr);
-				(out ? *out : cout) << "," << displayFrame;
-			}
-
-			(out ? *out : cout) << ":";
-
-		}
-		else {
-
-			if (!haveRt) {
-				rt = RealTime::frame2RealTime(frame, sr);
-			}
-
-			(out ? *out : cout) << rt.toString();
-
-			if (f.hasDuration) {
-				rt = f.duration;
-				(out ? *out : cout) << "," << rt.toString();
-			}
-
-			(out ? *out : cout) << ":";
-		}
-
-		for (unsigned int j = 0; j < f.values.size(); ++j) {
-			(out ? *out : cout) << " " << f.values[j];
-		}
-		(out ? *out : cout) << " " << f.label;
-
-		(out ? *out : cout) << endl;
-	}
 }
 
 void VampPluginHost::printPluginPath(bool verbose)
@@ -284,262 +257,3 @@ static string header(string text, int level)
 	out += '\n';
 	return out;
 }
-
-void VampPluginHost::enumeratePlugins(Verbosity verbosity)
-{
-	PluginLoader *loader = PluginLoader::getInstance();
-
-	if (verbosity == PluginInformation) {
-		cout << "\nVamp plugin libraries found in search path:" << endl;
-	}
-
-	vector<PluginLoader::PluginKey> plugins = loader->listPlugins();
-	typedef multimap<string, PluginLoader::PluginKey>
-		LibraryMap;
-	LibraryMap libraryMap;
-
-	for (size_t i = 0; i < plugins.size(); ++i) {
-		string path = loader->getLibraryPathForPlugin(plugins[i]);
-		libraryMap.insert(LibraryMap::value_type(path, plugins[i]));
-	}
-
-	string prevPath = "";
-	int index = 0;
-
-	for (LibraryMap::iterator i = libraryMap.begin();
-		i != libraryMap.end(); ++i) {
-
-		string path = i->first;
-		PluginLoader::PluginKey key = i->second;
-
-		if (path != prevPath) {
-			prevPath = path;
-			index = 0;
-			if (verbosity == PluginInformation) {
-				cout << "\n  " << path << ":" << endl;
-			}
-			else if (verbosity == PluginInformationDetailed) {
-				string::size_type ki = i->second.find(':');
-				string text = "Library \"" + i->second.substr(0, ki) + "\"";
-				cout << "\n" << header(text, 1);
-			}
-		}
-
-		Plugin *plugin = loader->loadPlugin(key, 48000);
-		if (plugin) {
-
-			char c = char('A' + index);
-			if (c > 'Z') c = char('a' + (index - 26));
-
-			PluginLoader::PluginCategoryHierarchy category =
-				loader->getPluginCategory(key);
-			string catstr;
-			if (!category.empty()) {
-				for (size_t ci = 0; ci < category.size(); ++ci) {
-					if (ci > 0) catstr += " > ";
-					catstr += category[ci];
-				}
-			}
-
-			if (verbosity == PluginInformation) {
-
-				cout << "    [" << c << "] [v"
-					<< plugin->getVampApiVersion() << "] "
-					<< plugin->getName() << ", \""
-					<< plugin->getIdentifier() << "\"" << " ["
-					<< plugin->getMaker() << "]" << endl;
-
-				if (catstr != "") {
-					cout << "       > " << catstr << endl;
-				}
-
-				if (plugin->getDescription() != "") {
-					cout << "        - " << plugin->getDescription() << endl;
-				}
-
-			}
-			else if (verbosity == PluginInformationDetailed) {
-
-				cout << header(plugin->getName(), 2);
-				cout << " - Identifier:         "
-					<< key << endl;
-				cout << " - Plugin Version:     "
-					<< plugin->getPluginVersion() << endl;
-				cout << " - Vamp API Version:   "
-					<< plugin->getVampApiVersion() << endl;
-				cout << " - Maker:              \""
-					<< plugin->getMaker() << "\"" << endl;
-				cout << " - Copyright:          \""
-					<< plugin->getCopyright() << "\"" << endl;
-				cout << " - Description:        \""
-					<< plugin->getDescription() << "\"" << endl;
-				cout << " - Input Domain:       "
-					<< (plugin->getInputDomain() == Vamp::Plugin::TimeDomain ?
-						"Time Domain" : "Frequency Domain") << endl;
-				cout << " - Default Step Size:  "
-					<< plugin->getPreferredStepSize() << endl;
-				cout << " - Default Block Size: "
-					<< plugin->getPreferredBlockSize() << endl;
-				cout << " - Minimum Channels:   "
-					<< plugin->getMinChannelCount() << endl;
-				cout << " - Maximum Channels:   "
-					<< plugin->getMaxChannelCount() << endl;
-
-			}
-			else if (verbosity == PluginIds) {
-				cout << "vamp:" << key << endl;
-			}
-
-			Plugin::OutputList outputs =
-				plugin->getOutputDescriptors();
-
-			if (verbosity == PluginInformationDetailed) {
-
-				Plugin::ParameterList params = plugin->getParameterDescriptors();
-				for (size_t j = 0; j < params.size(); ++j) {
-					Plugin::ParameterDescriptor &pd(params[j]);
-					cout << "\nParameter " << j + 1 << ": \"" << pd.name << "\"" << endl;
-					cout << " - Identifier:         " << pd.identifier << endl;
-					cout << " - Description:        \"" << pd.description << "\"" << endl;
-					if (pd.unit != "") {
-						cout << " - Unit:               " << pd.unit << endl;
-					}
-					cout << " - Range:              ";
-					cout << pd.minValue << " -> " << pd.maxValue << endl;
-					cout << " - Default:            ";
-					cout << pd.defaultValue << endl;
-					if (pd.isQuantized) {
-						cout << " - Quantize Step:      "
-							<< pd.quantizeStep << endl;
-					}
-					if (!pd.valueNames.empty()) {
-						cout << " - Value Names:        ";
-						for (size_t k = 0; k < pd.valueNames.size(); ++k) {
-							if (k > 0) cout << ", ";
-							cout << "\"" << pd.valueNames[k] << "\"";
-						}
-						cout << endl;
-					}
-				}
-
-				if (outputs.empty()) {
-					cout << "\n** Note: This plugin reports no outputs!" << endl;
-				}
-				for (size_t j = 0; j < outputs.size(); ++j) {
-					Plugin::OutputDescriptor &od(outputs[j]);
-					cout << "\nOutput " << j + 1 << ": \"" << od.name << "\"" << endl;
-					cout << " - Identifier:         " << od.identifier << endl;
-					cout << " - Description:        \"" << od.description << "\"" << endl;
-					if (od.unit != "") {
-						cout << " - Unit:               " << od.unit << endl;
-					}
-					if (od.hasFixedBinCount) {
-						cout << " - Default Bin Count:  " << od.binCount << endl;
-					}
-					if (!od.binNames.empty()) {
-						bool have = false;
-						for (size_t k = 0; k < od.binNames.size(); ++k) {
-							if (od.binNames[k] != "") {
-								have = true; break;
-							}
-						}
-						if (have) {
-							cout << " - Bin Names:          ";
-							for (size_t k = 0; k < od.binNames.size(); ++k) {
-								if (k > 0) cout << ", ";
-								cout << "\"" << od.binNames[k] << "\"";
-							}
-							cout << endl;
-						}
-					}
-					if (od.hasKnownExtents) {
-						cout << " - Default Extents:    ";
-						cout << od.minValue << " -> " << od.maxValue << endl;
-					}
-					if (od.isQuantized) {
-						cout << " - Quantize Step:      "
-							<< od.quantizeStep << endl;
-					}
-					cout << " - Sample Type:        "
-						<< (od.sampleType ==
-							Plugin::OutputDescriptor::OneSamplePerStep ?
-							"One Sample Per Step" :
-							od.sampleType ==
-							Plugin::OutputDescriptor::FixedSampleRate ?
-							"Fixed Sample Rate" :
-							"Variable Sample Rate") << endl;
-					if (od.sampleType !=
-						Plugin::OutputDescriptor::OneSamplePerStep) {
-						cout << " - Default Rate:       "
-							<< od.sampleRate << endl;
-					}
-					cout << " - Has Duration:       "
-						<< (od.hasDuration ? "Yes" : "No") << endl;
-				}
-			}
-
-			if (outputs.size() > 1 || verbosity == PluginOutputIds) {
-				for (size_t j = 0; j < outputs.size(); ++j) {
-					if (verbosity == PluginInformation) {
-						cout << "         (" << j << ") "
-							<< outputs[j].name << ", \""
-							<< outputs[j].identifier << "\"" << endl;
-						if (outputs[j].description != "") {
-							cout << "             - "
-								<< outputs[j].description << endl;
-						}
-					}
-					else if (verbosity == PluginOutputIds) {
-						cout << "vamp:" << key << ":" << outputs[j].identifier << endl;
-					}
-				}
-			}
-
-			++index;
-
-			delete plugin;
-		}
-	}
-
-	if (verbosity == PluginInformation ||
-		verbosity == PluginInformationDetailed) {
-		cout << endl;
-	}
-}
-
-void VampPluginHost::printPluginCategoryList()
-{
-	PluginLoader *loader = PluginLoader::getInstance();
-
-	vector<PluginLoader::PluginKey> plugins = loader->listPlugins();
-
-	set<string> printedcats;
-
-	for (size_t i = 0; i < plugins.size(); ++i) {
-
-		PluginLoader::PluginKey key = plugins[i];
-
-		PluginLoader::PluginCategoryHierarchy category =
-			loader->getPluginCategory(key);
-
-		Plugin *plugin = loader->loadPlugin(key, 48000);
-		if (!plugin) continue;
-
-		string catstr = "";
-
-		if (category.empty()) catstr = '|';
-		else {
-			for (size_t j = 0; j < category.size(); ++j) {
-				catstr += category[j];
-				catstr += '|';
-				if (printedcats.find(catstr) == printedcats.end()) {
-					std::cout << catstr << std::endl;
-					printedcats.insert(catstr);
-				}
-			}
-		}
-
-		std::cout << catstr << key << ":::" << plugin->getName() << ":::" << plugin->getMaker() << ":::" << plugin->getDescription() << std::endl;
-	}
-}
-

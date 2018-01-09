@@ -31,7 +31,8 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") int vampStepSize = 1024;
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float silenceTreshold = 75.f * 75.f;
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") TArray<int> bufferedMidiNotes;
-	
+	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float maxSoundValue = 0;
+
 
 	TSharedPtr<class IVoiceCapture> voiceCapture;
 	TSharedPtr<class VampPluginHost> vampHost;
@@ -67,11 +68,9 @@ public:
 private:
 	template<typename T>
 	bool NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8, int32 buffSize, float* outBuf, uint32 outBuffSize, float& volumedB, float& volumeAmplitude);
-	//int tmpCounter = 0;
-	//float* vector;
-	//bool finished = true;
 	static const unsigned int N = 4096;
 	const unsigned int sampleRate = 44100.0f;
 	bool isRecordingRecognizedFrequencies = false;
 	std::vector<float> recognizedFrequenciesToSave;
+
 };

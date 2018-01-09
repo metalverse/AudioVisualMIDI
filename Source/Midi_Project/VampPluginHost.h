@@ -48,29 +48,31 @@ enum Verbosity {
 	PluginInformationDetailed
 };
 
+struct pluginParams {
+	int pBlockSize;
+	int pStepSize;
+	int pOverlapSize;
+};
+
 class MIDI_PROJECT_API VampPluginHost
 {
 private:
 	float sampleRate = 44100.f;
-	int blockSize;
-	int stepSize;
-	int overlapSize;
-	PluginLoader *loaderPyin;
+	pluginParams pyinParams;
+	pluginParams onsetDetectorParams;
+	PluginLoader *loader;
 	Plugin *pluginPyin;
+	Plugin *pluginOnsetDetector;
+	double toSeconds(const RealTime &time);
+	bool initPlugin(Plugin* &pluginToInit, const std::string &libName, const std::string &plugName, pluginParams &params, int bSize, int sSize);
 public:
 	Plugin::FeatureSet features;
-	std::vector<float> extractedFeatures;
+	std::vector<std::pair<int, float>> extractedFeatures;
 	VampPluginHost(float, int, int);
 	~VampPluginHost();
-	void printFeatures(int, int,
-		const Plugin::OutputDescriptor &, int,
-		const Plugin::FeatureSet &, ofstream *, bool frames);
 	void transformInput(float *, size_t);
 	void fft(unsigned int, bool, double *, double *, double *, double *);
 	void printPluginPath(bool verbose);
-	void printPluginCategoryList();
-	void enumeratePlugins(Verbosity);
-	void listPluginsInLibrary(string soname);
 	int runPlugin(string soname, string id, float *inputBuffer, int inputSize);
-	std::vector<float> getExtractedFeatures();
+	std::vector<std::pair<int, float>> getExtractedFeatures();
 };
