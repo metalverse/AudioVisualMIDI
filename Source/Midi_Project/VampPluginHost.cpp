@@ -76,11 +76,10 @@ VampPluginHost::VampPluginHost(float sR, int bSize, int sSize)
 	initPlugin(pluginPyin, "pyin", "yin", pyinParams, bSize, sSize);
 	initPlugin(pluginOnsetDetector, "vamp-example-plugins", "percussiononsets", onsetDetectorParams, bSize, sSize);
 
-	pluginOnsetDetector->setParameter("treshold", 2.8f);
+	pluginOnsetDetector->setParameter("threshold", 3.0f);
 	pluginOnsetDetector->setParameter("sensitivity", 40.0f);
 
-	UE_LOG(LogTemp, Log, TEXT("Parameter ID: percussiononsets ||| Current treshold: %f ||| Current sensitivity: %f"), pluginOnsetDetector->getParameter("treshold"), pluginOnsetDetector->getParameter("sensitivity"));
-
+	UE_LOG(LogTemp, Log, TEXT("Parameter ID: percussiononsets ||| Current threshold: %f ||| Current sensitivity: %f"), pluginOnsetDetector->getParameter("threshold"), pluginOnsetDetector->getParameter("sensitivity"));
 }
 
 VampPluginHost::~VampPluginHost(){}
@@ -178,14 +177,6 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 
 		od = outputs[0]; //outputsNo = 0
 
-		if (id == "percussiononsets")  {
-			UE_LOG(LogTemp, Log, TEXT("RealTime: %s"), rt.toString().c_str());
-			if (!(features.find(0) == features.end())) {
-				UE_LOG(LogTemp, Log, TEXT("Output 0 has %zu features, values: %zu, RealTime: "), features.at(0).size(), features.at(0).at(0).values.size(), rt.toText().c_str());
-			} else if (!(features.find(1) == features.end())) {
-				UE_LOG(LogTemp, Log, TEXT("Output 1 has %zu features"), features.at(1).size());
-			}
-		}
 		int featureCount = -1;
 		if (!(features.find(0) == features.end())) {
 			

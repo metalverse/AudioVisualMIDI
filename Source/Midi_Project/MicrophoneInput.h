@@ -10,6 +10,7 @@
 #include "CoreMisc.h"
 #include "SimplePitchTracker.h"
 #include "SimplePitch.h"
+#include "WavFileWritter.h"
 #include "MicrophoneInput.generated.h"
 
 
@@ -29,7 +30,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") FString currentPitch;	
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") int vampBlockSize = 2048;
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") int vampStepSize = 1024;
-	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float silenceTreshold = 75.f * 75.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") float silenceTreshold = 75.f * 75.f;
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") TArray<int> bufferedMidiNotes;
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float maxSoundValue = 0;
 
@@ -44,13 +45,13 @@ public:
 	virtual void Tick( float DeltaSeconds ) override;
 
 	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
-		void StartRecordingRecognizedFrequencies();
+		void StartRecordingRecognizedFeatures();
 
 	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
-		void StopRecordingRecognizedFrequencies();
+		void StopRecordingRecognizedFeatures();
 
 	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
-		void ResetRecognizedFrequenciesBuffer();
+		void ResetRecognizedFeaturesBuffers();
 
 	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
 		void SaveStringTextToFile(
@@ -60,17 +61,28 @@ public:
 		);
 
 	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
-		void SaveRecognizedFrequenciesToFile(
+		void SaveRecognizedFeaturesToFiles(
 			FString SaveDirectory,
 			FString FileName
 		);
+
+	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
+		void StartSavingAudioInput(FString SaveDirectory, FString FileName);
+
+	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
+		void StopSavingAudioInput();
 
 private:
 	template<typename T>
 	bool NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8, int32 buffSize, float* outBuf, uint32 outBuffSize, float& volumedB, float& volumeAmplitude);
 	static const unsigned int N = 4096;
-	const unsigned int sampleRate = 44100.0f;
-	bool isRecordingRecognizedFrequencies = false;
+	const unsigned int sampleRate = 44100;
+	const unsigned int channels = 1;
+	bool isRecordingRecognizedFeatures = false;
+	bool isSavingAudioInput = false;
 	std::vector<float> recognizedFrequenciesToSave;
+	std::vector<float> recognizedOnsetsToSave;
+	WavFileWritter *wavFile = nullptr;
+	unsigned long int numberOfSamplesTracked = 0;
 
 };

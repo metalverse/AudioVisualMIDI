@@ -1,7 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Midi_Project.h"
-//#include "tools/kiss_fftnd.h"
 #include "MicrophoneInput.h"
 #include "VampPluginHost.h"
 
@@ -41,9 +40,9 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	voiceCapture = FVoiceModule::Get().CreateVoiceCapture();
-	voiceCapture->Init(44100, 1); //wspierane 8000 - 48000Hz
+	voiceCapture->Init(sampleRate, channels); //wspierane 8000 - 48000Hz
 	voiceCapture->Start();
-	host = new VampPluginHost(44100, vampBlockSize, vampStepSize);
+	host = new VampPluginHost(sampleRate, vampBlockSize, vampStepSize);
 	tracker = ObjectInitializer.CreateDefaultSubobject<USimplePitchTracker>(this, TEXT("MyPitchTracker"));
 	isSilence = true;
 }
@@ -93,13 +92,13 @@ bool AMicrophoneInput::NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8
 		if (outBuf[i] > maxSoundValue) maxSoundValue = outBuf[i];
 		totalSquare += sample * sample;
 	}
-	UE_LOG(LogTemp, Log, TEXT("Max audio value: %f"), maxSoundValue);
+	
 	float meanSquare = 2 * totalSquare / samples;
 	float rms = FMath::Sqrt(meanSquare);
 	float amplitude = rms / 32768.0f;
 	vol = 20 * log10f(amplitude) + 85;
 	vol2 = amplitude * 100;
-
+	UE_LOG(LogTemp, Log, TEXT("Max audio value: %f, avarage mean square: %f, normalized ams: %f"), maxSoundValue, AverageMeanSquare, (meanSquare/samples));
 	return AverageMeanSquare < silenceTreshold;
 }
 
@@ -131,7 +130,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		samples = readBytes / 2;
 		float* sampleBuf = new float[samples];
 		isSilence = NormalizeDataAndCheckForSilence((int16*)buf, buf, readBytes, sampleBuf, samples, volumedB, volumeAmplitude);
-		
+
 		if (!isSilence && samples >= (unsigned)vampStepSize) {
 			//////////////// PYIN /////////////////////
 			if (host->runPlugin("pyin", "yin", sampleBuf, samples) != 0) {
@@ -151,9 +150,10 @@ void AMicrophoneInput::Tick(float DeltaTime)
 				}
 				const auto median_it = features.begin() + features.size() / 2;
 				fundamental_frequency = (*median_it).second;
-				if (isRecordingRecognizedFrequencies) {
+				if (isRecordingRecognizedFeatures) {
 					recognizedFrequenciesToSave.push_back(fundamental_frequency);
 				}
+
 				if (fundamental_frequency > 0) {
 					if (!tracker->trackNewNote(fundamental_frequency)) {
 						GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
@@ -181,7 +181,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 				UE_LOG(LogTemp, Log, TEXT("Features empty"));
 			}
 			//////////////// ONSET DETECTOR /////////////////////
-			if (host->runPlugin("vamp-example-plugins", "percussiononsets", sampleBuf, samples) != 0) {
+			/*if (host->runPlugin("vamp-example-plugins", "percussiononsets", sampleBuf, samples) != 0) {
 				UE_LOG(LogTemp, Log, TEXT("Failed to run percussiononsets plugin!"));
 			}
 			auto onsetFeatures = host->getExtractedFeatures();
@@ -191,9 +191,29 @@ void AMicrophoneInput::Tick(float DeltaTime)
 					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::FromInt(onsetFeature.first).Append(" SAMPLE IS ONSET"));
 					UE_LOG(LogTemp, Log, TEXT("Detected onset sample: %d, sound volume: %f"), onsetFeature.first, maxSoundValue);
 				}
-			}
+			}*/
 		} else {
 			fundamental_frequency = 0;
+		}
+		//////////////// ONSET DETECTOR /////////////////////
+		if (host->runPlugin("vamp-example-plugins", "percussiononsets", sampleBuf, samples) != 0) {
+			UE_LOG(LogTemp, Log, TEXT("Failed to run percussiononsets plugin!"));
+		}
+		auto onsetFeatures = host->getExtractedFeatures();
+
+		if (onsetFeatures.size() > 0) {
+			for (auto onsetFeature : onsetFeatures) {
+				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::FromInt(numberOfSamplesTracked + onsetFeature.first).Append(" SAMPLE IS ONSET"));
+				UE_LOG(LogTemp, Log, TEXT("Detected onset sample: %d, sound volume: %f"), onsetFeature.first, maxSoundValue);
+				if (isRecordingRecognizedFeatures) {
+					recognizedOnsetsToSave.push_back(numberOfSamplesTracked + onsetFeature.first);
+				}
+			}
+		}
+		if (isSavingAudioInput) {
+			UE_LOG(LogTemp, Log, TEXT("Number of samples tracked: %d"), numberOfSamplesTracked);
+			numberOfSamplesTracked += samples;
+			wavFile->writeData(sampleBuf, samples);
 		}
 		delete[] sampleBuf;
 	}
@@ -203,18 +223,19 @@ void AMicrophoneInput::Tick(float DeltaTime)
 
 }
 
-void AMicrophoneInput::StartRecordingRecognizedFrequencies()
+void AMicrophoneInput::StartRecordingRecognizedFeatures()
 {
-	isRecordingRecognizedFrequencies = true;
+	isRecordingRecognizedFeatures = true;
 }
 
-void AMicrophoneInput::StopRecordingRecognizedFrequencies()
+void AMicrophoneInput::StopRecordingRecognizedFeatures()
 {
-	isRecordingRecognizedFrequencies = false;
+	isRecordingRecognizedFeatures = false;
 }
 
-void AMicrophoneInput::ResetRecognizedFrequenciesBuffer()
+void AMicrophoneInput::ResetRecognizedFeaturesBuffers()
 {
+	recognizedOnsetsToSave.clear();
 	recognizedFrequenciesToSave.clear();
 }
 
@@ -240,7 +261,7 @@ void AMicrophoneInput::SaveStringTextToFile(
 	}
 }
 
-void AMicrophoneInput::SaveRecognizedFrequenciesToFile(
+void AMicrophoneInput::SaveRecognizedFeaturesToFiles(
 	FString SaveDirectory,
 	FString FileName) {
 
@@ -248,21 +269,46 @@ void AMicrophoneInput::SaveRecognizedFrequenciesToFile(
 
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 
-	FString textToSave = "";
+	FString frequenciesTextToSave = "";
 	for (float const& value : recognizedFrequenciesToSave) {
-		textToSave.Append(FString::SanitizeFloat(value)).Append(LINE_TERMINATOR);
+		frequenciesTextToSave.Append(FString::SanitizeFloat(value)).Append(LINE_TERMINATOR);
+	}
+
+	FString onsetsTextToSave = "";
+	for (float const& value : recognizedOnsetsToSave) {
+		onsetsTextToSave.Append(FString::SanitizeFloat(value)).Append(LINE_TERMINATOR);
 	}
 
 	if (PlatformFile.CreateDirectoryTree(*SaveDirectory))
 	{
 		// Get absolute file path
-		FString AbsoluteFilePath = SaveDirectory + "/" + FileName;
+		FString freqAbsoluteFilePath = SaveDirectory + "/" + FileName + "-freq.txt";
+		FString onsetAbsoluteFilePath = SaveDirectory + "/" + FileName + "-onset.txt";
 
 		// Allow overwriting or file doesn't already exist
-		if (AllowOverwriting || !PlatformFile.FileExists(*AbsoluteFilePath))
+		if (AllowOverwriting || !PlatformFile.FileExists(*freqAbsoluteFilePath))
 		{
-			FFileHelper::SaveStringToFile(textToSave, *AbsoluteFilePath);
+			FFileHelper::SaveStringToFile(frequenciesTextToSave, *freqAbsoluteFilePath);
 		}
-	}
+
+		if (AllowOverwriting || !PlatformFile.FileExists(*onsetAbsoluteFilePath))
+		{
+			FFileHelper::SaveStringToFile(onsetsTextToSave, *onsetAbsoluteFilePath);
+		}
+	}	
 }
 
+void AMicrophoneInput::StartSavingAudioInput(FString SaveDirectory, FString FileName) {
+	numberOfSamplesTracked = 0;
+	isSavingAudioInput = true;
+	string(TCHAR_TO_UTF8(*SaveDirectory));
+	FString AbsoluteFilePath = SaveDirectory + "/" + FileName;
+	wavFile = new WavFileWritter(string(TCHAR_TO_UTF8(*AbsoluteFilePath)));
+	wavFile->writeHeader(sampleRate, channels);
+}
+
+void AMicrophoneInput::StopSavingAudioInput() {
+	isSavingAudioInput = false;
+	wavFile->closeFile();
+	wavFile = nullptr;
+}
