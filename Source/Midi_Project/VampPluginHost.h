@@ -65,14 +65,16 @@ private:
 	Plugin *pluginOnsetDetector;
 	double toSeconds(const RealTime &time);
 	bool initPlugin(Plugin* &pluginToInit, const std::string &libName, const std::string &plugName, pluginParams &params, int bSize, int sSize);
+	float* overlapBuffer = nullptr;
+
 public:
 	Plugin::FeatureSet features;
 	std::vector<std::pair<int, float>> extractedFeatures;
-	VampPluginHost(float, int, int);
+	VampPluginHost(float, int, int, float, float);
 	~VampPluginHost();
 	void transformInput(float *, size_t);
 	void fft(unsigned int, bool, double *, double *, double *, double *);
 	void printPluginPath(bool verbose);
-	int runPlugin(string soname, string id, float *inputBuffer, int inputSize);
+	int runPlugin(string soname, string id, float *inputBuffer, int inputSize, bool runInOverlapMode);
 	std::vector<std::pair<int, float>> getExtractedFeatures();
 };

@@ -20,12 +20,14 @@ UCLASS(Blueprintable)
 class MIDI_PROJECT_API AMicrophoneInput : public AActor
 {
 	GENERATED_BODY()
-	
 
 public:
+	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float onsetParamThreshold = 10.0f;
+	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float onsetParamSensitivity = 70.0f;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") float volumedB;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") float volumeAmplitude;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") bool isSilence;
+	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") bool isOnsetDetected;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") int fundamental_frequency;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") FString currentPitch;	
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") int vampBlockSize = 2048;

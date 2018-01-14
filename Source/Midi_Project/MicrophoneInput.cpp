@@ -34,17 +34,16 @@ using Vamp::HostExt::PluginInputDomainAdapter;
 
 VampPluginHost *host;
 
-// Sets default values
 AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	voiceCapture = FVoiceModule::Get().CreateVoiceCapture();
-	voiceCapture->Init(sampleRate, channels); //wspierane 8000 - 48000Hz
+	voiceCapture->Init(sampleRate, channels); //supported range: 8000 - 48000 Hz
 	voiceCapture->Start();
-	host = new VampPluginHost(sampleRate, vampBlockSize, vampStepSize);
+	host = new VampPluginHost(sampleRate, vampBlockSize, vampStepSize, onsetParamThreshold, onsetParamSensitivity);
 	tracker = ObjectInitializer.CreateDefaultSubobject<USimplePitchTracker>(this, TEXT("MyPitchTracker"));
 	isSilence = true;
+	isOnsetDetected = false;
 }
 
 AMicrophoneInput::~AMicrophoneInput()
@@ -106,7 +105,6 @@ bool AMicrophoneInput::NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8
 void AMicrophoneInput::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
 	int maxBytes = 0;
 	uint32 bytesAvailable = 0;
 	EVoiceCaptureState::Type captureState = voiceCapture->GetCaptureState(bytesAvailable);
@@ -128,22 +126,21 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		voiceCapture->GetVoiceData(buf, maxBytes, readBytes);
 		uint32 samples = 0;
 		samples = readBytes / 2;
+		UE_LOG(LogTemp, Log, TEXT("ONSET new samples: %d"), samples);
 		float* sampleBuf = new float[samples];
 		isSilence = NormalizeDataAndCheckForSilence((int16*)buf, buf, readBytes, sampleBuf, samples, volumedB, volumeAmplitude);
 
 		if (!isSilence && samples >= (unsigned)vampStepSize) {
 			//////////////// PYIN /////////////////////
-			if (host->runPlugin("pyin", "yin", sampleBuf, samples) != 0) {
+			if (host->runPlugin("pyin", "yin", sampleBuf, samples, false) != 0) {
 				UE_LOG(LogTemp, Log, TEXT("Failed to run yin plugin!"));
 			}
 			auto features = host->getExtractedFeatures();
 
 			if (features.size() > 0) {
-				//////////////// CHECK SORTING!!!! ////////////////////////
 				std::sort(features.begin(), features.end(), [](auto &left, auto &right) {
 					return left.second < right.second;
 				});
-				//std::sort(features.begin(), features.end());
 				for (auto feature : features) {
 					//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::SanitizeFloat(feature).Append(" Hz"));
 					UE_LOG(LogTemp, Log, TEXT("My value: %f"), feature.second);
@@ -180,23 +177,11 @@ void AMicrophoneInput::Tick(float DeltaTime)
 				fundamental_frequency = 0;
 				UE_LOG(LogTemp, Log, TEXT("Features empty"));
 			}
-			//////////////// ONSET DETECTOR /////////////////////
-			/*if (host->runPlugin("vamp-example-plugins", "percussiononsets", sampleBuf, samples) != 0) {
-				UE_LOG(LogTemp, Log, TEXT("Failed to run percussiononsets plugin!"));
-			}
-			auto onsetFeatures = host->getExtractedFeatures();
-
-			if (onsetFeatures.size() > 0) {
-				for (auto onsetFeature : onsetFeatures) {
-					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::FromInt(onsetFeature.first).Append(" SAMPLE IS ONSET"));
-					UE_LOG(LogTemp, Log, TEXT("Detected onset sample: %d, sound volume: %f"), onsetFeature.first, maxSoundValue);
-				}
-			}*/
 		} else {
 			fundamental_frequency = 0;
 		}
 		//////////////// ONSET DETECTOR /////////////////////
-		if (host->runPlugin("vamp-example-plugins", "percussiononsets", sampleBuf, samples) != 0) {
+		if (host->runPlugin("vamp-example-plugins", "percussiononsets", sampleBuf, samples, true) != 0) {
 			UE_LOG(LogTemp, Log, TEXT("Failed to run percussiononsets plugin!"));
 		}
 		auto onsetFeatures = host->getExtractedFeatures();
@@ -204,23 +189,24 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		if (onsetFeatures.size() > 0) {
 			for (auto onsetFeature : onsetFeatures) {
 				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::FromInt(numberOfSamplesTracked + onsetFeature.first).Append(" SAMPLE IS ONSET"));
-				UE_LOG(LogTemp, Log, TEXT("Detected onset sample: %d, sound volume: %f"), onsetFeature.first, maxSoundValue);
+				UE_LOG(LogTemp, Log, TEXT("ONSET Detected onset sample: %d, sound volume: %f"), numberOfSamplesTracked + onsetFeature.first, maxSoundValue);
 				if (isRecordingRecognizedFeatures) {
-					recognizedOnsetsToSave.push_back(numberOfSamplesTracked + onsetFeature.first);
+					float onsetFrame = 1.0f * numberOfSamplesTracked + onsetFeature.first;
+					recognizedOnsetsToSave.push_back(onsetFrame);
 				}
 			}
+			isOnsetDetected = true;
 		}
-		if (isSavingAudioInput) {
-			UE_LOG(LogTemp, Log, TEXT("Number of samples tracked: %d"), numberOfSamplesTracked);
+		else {
+			isOnsetDetected = false;
+		}
+		if(isSavingAudioInput) {
+			UE_LOG(LogTemp, Log, TEXT("ONSET Number of samples tracked from: %d to %d "), numberOfSamplesTracked, numberOfSamplesTracked+samples);
 			numberOfSamplesTracked += samples;
 			wavFile->writeData(sampleBuf, samples);
 		}
 		delete[] sampleBuf;
 	}
-	else {
-		//GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Turquoise, "No data");
-	}
-
 }
 
 void AMicrophoneInput::StartRecordingRecognizedFeatures()

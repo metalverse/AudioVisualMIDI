@@ -63,7 +63,7 @@ bool VampPluginHost::initPlugin(Plugin* &pluginToInit, const std::string &libNam
 
 
 
-VampPluginHost::VampPluginHost(float sR, int bSize, int sSize)
+VampPluginHost::VampPluginHost(float sR, int bSize, int sSize, float onsetThreshold, float onsetSensitivity)
 {
 	sampleRate = sR;
 
@@ -73,11 +73,11 @@ VampPluginHost::VampPluginHost(float sR, int bSize, int sSize)
 
 	loader = PluginLoader::getInstance();
 
-	initPlugin(pluginPyin, "pyin", "yin", pyinParams, bSize, sSize);
-	initPlugin(pluginOnsetDetector, "vamp-example-plugins", "percussiononsets", onsetDetectorParams, bSize, sSize);
+	initPlugin(pluginPyin, "pyin", "yin", pyinParams, 2048, 256);
+	initPlugin(pluginOnsetDetector, "vamp-example-plugins", "percussiononsets", onsetDetectorParams, 1024, 512);
 
-	pluginOnsetDetector->setParameter("threshold", 3.0f);
-	pluginOnsetDetector->setParameter("sensitivity", 40.0f);
+	pluginOnsetDetector->setParameter("threshold", onsetThreshold);
+	pluginOnsetDetector->setParameter("sensitivity", onsetSensitivity);
 
 	UE_LOG(LogTemp, Log, TEXT("Parameter ID: percussiononsets ||| Current threshold: %f ||| Current sensitivity: %f"), pluginOnsetDetector->getParameter("threshold"), pluginOnsetDetector->getParameter("sensitivity"));
 }
@@ -88,7 +88,7 @@ VampPluginHost::~VampPluginHost(){}
 
 using namespace std;
 
-int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int inputSize)
+int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int inputSize, bool runInOverlapMode)
 {
 	Plugin* runningPlugin;
 	pluginParams params;
@@ -137,7 +137,7 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 				rightRange += params.pStepSize;
 				blockLeft -= params.pStepSize;
 			} else {
-				leftRange += blockLeft;
+				leftRange += params.pStepSize; //blockLeft?
 				rightRange += blockLeft;
 				blockLeft = 0;
 				finalStepsRemaining = 0;
@@ -160,6 +160,7 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 				plugbuf[c][j] = 0.0f;
 				++j;
 			}
+			UE_LOG(LogTemp, Log, TEXT("Plugbuf with value: %d, zeroed: %d, input: %d, stepsRemaining: %d"), count, params.pBlockSize-count, inputSize, finalStepsRemaining);
 		}
 		Plugin::OutputList outputs = runningPlugin->getOutputDescriptors();
 		Plugin::OutputDescriptor od;
@@ -212,6 +213,11 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 		delete plugbuf;
 		++currentStep;
 	} while (finalStepsRemaining > 0);
+	/*if (runInOverlapMode) {
+		delete[] overlapBuffer;
+		overlapBuffer = new float[params.pStepSize];
+		memcpy(overlapBuffer, inputBuffer + (inputSize - params.pStepSize - 1), sizeof(float) * params.pStepSize);
+	}*/
 	return 0;
 }
 
