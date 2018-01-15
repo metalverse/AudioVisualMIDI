@@ -132,7 +132,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 
 		if (!isSilence && samples >= (unsigned)vampStepSize) {
 			//////////////// PYIN /////////////////////
-			if (host->runPlugin("pyin", "yin", sampleBuf, samples, false) != 0) {
+			if (host->runPlugin("pyin", "yin", sampleBuf, samples, false, -1) != 0) {
 				UE_LOG(LogTemp, Log, TEXT("Failed to run yin plugin!"));
 			}
 			auto features = host->getExtractedFeatures();
@@ -181,7 +181,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 			fundamental_frequency = 0;
 		}
 		//////////////// ONSET DETECTOR /////////////////////
-		if (host->runPlugin("vamp-example-plugins", "percussiononsets", sampleBuf, samples, true) != 0) {
+		if (host->runPlugin("vamp-example-plugins", "percussiononsets", sampleBuf, samples, true, numberOfSamplesTracked-1) != 0) {
 			UE_LOG(LogTemp, Log, TEXT("Failed to run percussiononsets plugin!"));
 		}
 		auto onsetFeatures = host->getExtractedFeatures();

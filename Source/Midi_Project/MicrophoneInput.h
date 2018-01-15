@@ -22,8 +22,8 @@ class MIDI_PROJECT_API AMicrophoneInput : public AActor
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float onsetParamThreshold = 10.0f;
-	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float onsetParamSensitivity = 70.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") float onsetParamThreshold = 3.0f; //default value
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") float onsetParamSensitivity = 40.0f; //default value
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") float volumedB;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") float volumeAmplitude;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") bool isSilence;

@@ -73,8 +73,9 @@ VampPluginHost::VampPluginHost(float sR, int bSize, int sSize, float onsetThresh
 
 	loader = PluginLoader::getInstance();
 
-	initPlugin(pluginPyin, "pyin", "yin", pyinParams, 2048, 256);
+	initPlugin(pluginPyin, "pyin", "yin", pyinParams, 2048, 512);
 	initPlugin(pluginOnsetDetector, "vamp-example-plugins", "percussiononsets", onsetDetectorParams, 1024, 512);
+	overlapBufferSize = 2 * 512;
 
 	pluginOnsetDetector->setParameter("threshold", onsetThreshold);
 	pluginOnsetDetector->setParameter("sensitivity", onsetSensitivity);
@@ -88,7 +89,7 @@ VampPluginHost::~VampPluginHost(){}
 
 using namespace std;
 
-int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int inputSize, bool runInOverlapMode)
+int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int inputSize, bool runInOverlapMode, int startFrame)
 {
 	Plugin* runningPlugin;
 	pluginParams params;
@@ -104,13 +105,35 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 		return 1;
 	}
 
+	float* processBuffer = nullptr;
+	int blockLeft = 0;
+
+	if (runInOverlapMode && overlapBuffer != nullptr) {
+		processBuffer = new float[inputSize + overlapBufferSize];
+		memcpy(processBuffer, overlapBuffer, sizeof(float) * overlapBufferSize);
+		memcpy(processBuffer + overlapBufferSize, inputBuffer, sizeof(float) * inputSize);
+		blockLeft = inputSize + overlapBufferSize;
+	}
+	else {
+		blockLeft = inputSize;
+		processBuffer = inputBuffer;
+	}
+
+	//if (startFrame > 0) {
+	//	startFrame += 1;
+	//	string filename = to_string(startFrame) + "-" + to_string(startFrame + inputSize - 1) + ".wav";
+	//	debugWavFile = new WavFileWritter("D:\\Studia\\Praca Magisterska\\WavOutput\\Debug\\" + filename);
+	//	debugWavFile->writeHeader(44100, 1);
+	//	debugWavFile->writeData(processBuffer, inputSize + overlapBufferSize);
+	//	debugWavFile->closeFile();
+	//}
+
 	UE_LOG(LogTemp, Log, TEXT("In plugin, size: %d"), inputSize);
 	int channels = 1;
 	
-	int finalStepsRemaining = max(1, (inputSize / params.pStepSize));
+	int finalStepsRemaining = max(1, (blockLeft / params.pStepSize));
+
 	int currentStep = 0;
-	
-	int blockLeft = inputSize;
 
 	if (!runningPlugin->initialise(channels, params.pStepSize, params.pBlockSize)) {
 		UE_LOG(LogTemp, Log, TEXT("Error initializing plugin!"));
@@ -121,12 +144,13 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 	int rightRange = 0;
 	do {
 		int count = 0;
-		if ((currentStep == 0)) {
+		if (currentStep == 0) {
 			leftRange = 0;
 			if (blockLeft > params.pBlockSize) {
 				rightRange = params.pBlockSize;
 				blockLeft -= params.pBlockSize;
-			} else {
+			}
+			else {
 				rightRange = blockLeft;
 				blockLeft = 0;
 				finalStepsRemaining = 0;
@@ -151,9 +175,9 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 		}
 		for (int c = 0; c < channels; ++c) {
 			int j = 0;
+			int overlapOffset = 0;
 			while (j < count) {
-				plugbuf[c][j] = inputBuffer[(j + leftRange) * channels + c];// 0;//filebuf[j * sfinfo.channels + c];
-				//UE_LOG(LogTemp, Log, TEXT("inputBuffer: %f"), plugbuf[c][j]);
+				plugbuf[c][j] = processBuffer[(j + leftRange) * channels + c];// 0;//filebuf[j * sfinfo.channels + c];
 				++j;
 			}
 			while (j < params.pBlockSize) {
@@ -213,11 +237,16 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 		delete plugbuf;
 		++currentStep;
 	} while (finalStepsRemaining > 0);
-	/*if (runInOverlapMode) {
+	if (runInOverlapMode) {
 		delete[] overlapBuffer;
-		overlapBuffer = new float[params.pStepSize];
-		memcpy(overlapBuffer, inputBuffer + (inputSize - params.pStepSize - 1), sizeof(float) * params.pStepSize);
-	}*/
+		if (inputSize >= overlapBufferSize) {
+			overlapBuffer = new float[overlapBufferSize];
+			memcpy(overlapBuffer, inputBuffer + (inputSize - overlapBufferSize), sizeof(float) * overlapBufferSize);
+		}
+		else {
+			overlapBuffer = nullptr;
+		}
+	}
 	return 0;
 }
 
