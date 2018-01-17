@@ -77,6 +77,8 @@ public:
 private:
 	template<typename T>
 	bool NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8, int32 buffSize, float* outBuf, uint32 outBuffSize, float& volumedB, float& volumeAmplitude);
+	void TrackFundamentalFrequency(float* &sampleBuf, int samples);
+	void TrackPercussionOnsets(float* &sampleBuf, int samples, int numberOfSamplesTracked);
 	static const unsigned int N = 4096;
 	const unsigned int sampleRate = 44100;
 	const unsigned int channels = 1;
@@ -86,5 +88,4 @@ private:
 	std::vector<float> recognizedOnsetsToSave;
 	WavFileWritter *wavFile = nullptr;
 	unsigned long int numberOfSamplesTracked = 0;
-
 };

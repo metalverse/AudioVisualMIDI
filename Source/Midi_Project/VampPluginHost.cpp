@@ -83,7 +83,12 @@ VampPluginHost::VampPluginHost(float sR, int bSize, int sSize, float onsetThresh
 	UE_LOG(LogTemp, Log, TEXT("Parameter ID: percussiononsets ||| Current threshold: %f ||| Current sensitivity: %f"), pluginOnsetDetector->getParameter("threshold"), pluginOnsetDetector->getParameter("sensitivity"));
 }
 
-VampPluginHost::~VampPluginHost(){}
+VampPluginHost::~VampPluginHost(){
+	/*delete[] overlapBuffer;
+	delete debugWavFile;
+	delete pluginPyin;
+	delete pluginOnsetDetector;*/
+}
 
 /* -*- c-basic-offset: 4 indent-tabs-mode: nil -*-  vi:set ts=8 sts=4 sw=4: */
 
@@ -237,6 +242,9 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 		delete plugbuf;
 		++currentStep;
 	} while (finalStepsRemaining > 0);
+	if (runInOverlapMode && overlapBuffer != nullptr) {
+		delete[] processBuffer;
+	}
 	if (runInOverlapMode) {
 		delete[] overlapBuffer;
 		if (inputSize >= overlapBufferSize) {

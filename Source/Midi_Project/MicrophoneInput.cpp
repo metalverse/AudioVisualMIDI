@@ -48,6 +48,7 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 
 AMicrophoneInput::~AMicrophoneInput()
 {
+	delete wavFile;
 	//delete tracker;
 }
 
@@ -108,104 +109,110 @@ void AMicrophoneInput::Tick(float DeltaTime)
 	int maxBytes = 0;
 	uint32 bytesAvailable = 0;
 	EVoiceCaptureState::Type captureState = voiceCapture->GetCaptureState(bytesAvailable);
-	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(bytesAvailable).Append(" bytesAvailable"));
 	FString bufforStatus = EVoiceCaptureState::ToString(captureState);
-	UE_LOG(LogTemp, Log, TEXT("Buffor status: %s"), *bufforStatus);
-	int bytAvailable = bytesAvailable;
-	UE_LOG(LogTemp, Log, TEXT("Bytes available: %d"), bytAvailable);
-	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, EVoiceCaptureState::ToString(captureState));
+	UE_LOG(LogTemp, Log, TEXT("Bytes available: %d"), (int)bytesAvailable);
+
 	if (captureState == EVoiceCaptureState::Ok && bytesAvailable >= 0)
 	{
-		//UE_LOG(LogTemp, Log, TEXT("Bytes taken: %d"), bytesAvailable);
-		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Turquoise, FString::FromInt(bytesAvailable).Append(" bytesAvailable"));
 		maxBytes = bytesAvailable;
 		uint8* buf = new uint8[maxBytes];
 		memset(buf, 0, maxBytes);
 		uint32 readBytes = 0;
-
 		voiceCapture->GetVoiceData(buf, maxBytes, readBytes);
-		uint32 samples = 0;
-		samples = readBytes / 2;
+		uint32 samples = readBytes / 2;
+
 		UE_LOG(LogTemp, Log, TEXT("ONSET new samples: %d"), samples);
 		float* sampleBuf = new float[samples];
 		isSilence = NormalizeDataAndCheckForSilence((int16*)buf, buf, readBytes, sampleBuf, samples, volumedB, volumeAmplitude);
 
 		if (!isSilence && samples >= (unsigned)vampStepSize) {
-			//////////////// PYIN /////////////////////
-			if (host->runPlugin("pyin", "yin", sampleBuf, samples, false, -1) != 0) {
-				UE_LOG(LogTemp, Log, TEXT("Failed to run yin plugin!"));
-			}
-			auto features = host->getExtractedFeatures();
-
-			if (features.size() > 0) {
-				std::sort(features.begin(), features.end(), [](auto &left, auto &right) {
-					return left.second < right.second;
-				});
-				for (auto feature : features) {
-					//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::SanitizeFloat(feature).Append(" Hz"));
-					UE_LOG(LogTemp, Log, TEXT("My value: %f"), feature.second);
-				}
-				const auto median_it = features.begin() + features.size() / 2;
-				fundamental_frequency = (*median_it).second;
-				if (isRecordingRecognizedFeatures) {
-					recognizedFrequenciesToSave.push_back(fundamental_frequency);
-				}
-
-				if (fundamental_frequency > 0) {
-					if (!tracker->trackNewNote(fundamental_frequency)) {
-						GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
-					}
-					else {
-						const int trackedSoundToMidiNote = tracker->currentNote->getMidiNoteId();
-						if (bufferedMidiNotes.Num() == 0) {
-							bufferedMidiNotes.Add(trackedSoundToMidiNote);
-						}
-						else if (bufferedMidiNotes.Last() == trackedSoundToMidiNote) {
-							// Handle incrementing
-						}
-						else {
-							bufferedMidiNotes.Add(trackedSoundToMidiNote);
-						}
-						currentPitch = tracker->currentNote->getName();
-					}
-				}
-				else {
-					UE_LOG(LogTemp, Log, TEXT("Unrecognized frequency"));
-				}
-			}
-			else {
-				fundamental_frequency = 0;
-				UE_LOG(LogTemp, Log, TEXT("Features empty"));
-			}
+			/////// FREQS /////////
+			TrackFundamentalFrequency(sampleBuf, samples);
 		} else {
 			fundamental_frequency = 0;
 		}
-		//////////////// ONSET DETECTOR /////////////////////
-		if (host->runPlugin("vamp-example-plugins", "percussiononsets", sampleBuf, samples, true, numberOfSamplesTracked-1) != 0) {
-			UE_LOG(LogTemp, Log, TEXT("Failed to run percussiononsets plugin!"));
-		}
-		auto onsetFeatures = host->getExtractedFeatures();
-
-		if (onsetFeatures.size() > 0) {
-			for (auto onsetFeature : onsetFeatures) {
-				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::FromInt(numberOfSamplesTracked + onsetFeature.first).Append(" SAMPLE IS ONSET"));
-				UE_LOG(LogTemp, Log, TEXT("ONSET Detected onset sample: %d, sound volume: %f"), numberOfSamplesTracked + onsetFeature.first, maxSoundValue);
-				if (isRecordingRecognizedFeatures) {
-					float onsetFrame = 1.0f * numberOfSamplesTracked + onsetFeature.first;
-					recognizedOnsetsToSave.push_back(onsetFrame);
-				}
-			}
-			isOnsetDetected = true;
-		}
-		else {
-			isOnsetDetected = false;
-		}
+		/////// ONSETS /////////
+		TrackPercussionOnsets(sampleBuf, samples, numberOfSamplesTracked);
 		if(isSavingAudioInput) {
 			UE_LOG(LogTemp, Log, TEXT("ONSET Number of samples tracked from: %d to %d "), numberOfSamplesTracked, numberOfSamplesTracked+samples);
 			numberOfSamplesTracked += samples;
 			wavFile->writeData(sampleBuf, samples);
 		}
 		delete[] sampleBuf;
+		//delete buf;
+	}
+}
+
+void AMicrophoneInput::TrackFundamentalFrequency(float* &sampleBuf, int samples) {
+
+	//////////////// PYIN /////////////////////
+	if (host->runPlugin("pyin", "yin", sampleBuf, samples, false, -1) != 0) {
+		UE_LOG(LogTemp, Log, TEXT("Failed to run yin plugin!"));
+	}
+	auto features = host->getExtractedFeatures();
+	///////////////////////////////////////////
+
+	if (features.size() > 0) {
+		std::sort(features.begin(), features.end(), [](auto &left, auto &right) {
+			return left.second < right.second;
+		});
+		for (auto feature : features) {
+			UE_LOG(LogTemp, Log, TEXT("My value: %f"), feature.second);
+		}
+		const auto median_it = features.begin() + features.size() / 2;
+		fundamental_frequency = (*median_it).second;
+		if (isRecordingRecognizedFeatures) {
+			recognizedFrequenciesToSave.push_back(fundamental_frequency);
+		}
+
+		if (fundamental_frequency > 0) {
+			if (!tracker->trackNewNote(fundamental_frequency)) {
+				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
+			}
+			else {
+				const int trackedSoundToMidiNote = tracker->currentNote->getMidiNoteId();
+				if (bufferedMidiNotes.Num() == 0) {
+					bufferedMidiNotes.Add(trackedSoundToMidiNote);
+				}
+				else if (bufferedMidiNotes.Last() == trackedSoundToMidiNote) {
+					// Handle incrementing
+				}
+				else {
+					bufferedMidiNotes.Add(trackedSoundToMidiNote);
+				}
+				currentPitch = tracker->currentNote->getName();
+			}
+		}
+		else {
+			UE_LOG(LogTemp, Log, TEXT("Unrecognized frequency"));
+		}
+	}
+	else {
+		fundamental_frequency = 0;
+		UE_LOG(LogTemp, Log, TEXT("Features empty"));
+	}
+}
+
+void AMicrophoneInput::TrackPercussionOnsets(float* &sampleBuf, int samples, int numberOfSamplesTracked) {
+	//////////////// ONSET DETECTOR /////////////////////
+	if (host->runPlugin("vamp-example-plugins", "percussiononsets", sampleBuf, samples, true, numberOfSamplesTracked - 1) != 0) {
+		UE_LOG(LogTemp, Log, TEXT("Failed to run percussiononsets plugin!"));
+	}
+	auto onsetFeatures = host->getExtractedFeatures();
+
+	if (onsetFeatures.size() > 0) {
+		for (auto onsetFeature : onsetFeatures) {
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::FromInt(numberOfSamplesTracked + onsetFeature.first).Append(" SAMPLE IS ONSET"));
+			UE_LOG(LogTemp, Log, TEXT("ONSET Detected onset sample: %d, sound volume: %f"), numberOfSamplesTracked + onsetFeature.first, maxSoundValue);
+			if (isRecordingRecognizedFeatures) {
+				float onsetFrame = 1.0f * numberOfSamplesTracked + onsetFeature.first;
+				recognizedOnsetsToSave.push_back(onsetFrame);
+			}
+		}
+		isOnsetDetected = true;
+	}
+	else {
+		isOnsetDetected = false;
 	}
 }
 
