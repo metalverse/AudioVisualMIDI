@@ -34,6 +34,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") int vampStepSize = 1024;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") float silenceTreshold = 75.f * 75.f;
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") TArray<int> bufferedMidiNotes;
+	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") TArray<int> bufferedMidiNotesOccurences;
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float maxSoundValue = 0;
 
 

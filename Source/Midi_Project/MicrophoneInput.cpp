@@ -38,8 +38,23 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 {
 	PrimaryActorTick.bCanEverTick = true;
 	voiceCapture = FVoiceModule::Get().CreateVoiceCapture();
-	voiceCapture->Init(sampleRate, channels); //supported range: 8000 - 48000 Hz
-	voiceCapture->Start();
+	if (!(voiceCapture.IsValid())) {
+		UE_LOG(LogTemp, Log, TEXT("VoiceCapture not valid!"));
+		voiceCapture.Reset();
+		voiceCapture = FVoiceModule::Get().CreateVoiceCapture();
+		if (!(voiceCapture.IsValid())) {
+			UE_LOG(LogTemp, Log, TEXT("VoiceCapture still not valid!"));
+		}
+	}
+	else {
+		if (!(voiceCapture->Init(sampleRate, channels))) { 		 //supported range: 8000 - 48000 Hz
+			UE_LOG(LogTemp, Log, TEXT("Failed to init VoiceCapture!"));
+		}
+		else {
+			voiceCapture->Start();
+			UE_LOG(LogTemp, Log, TEXT("VoiceCapture started."));
+		}
+	}
 	host = new VampPluginHost(sampleRate, vampBlockSize, vampStepSize, onsetParamThreshold, onsetParamSensitivity);
 	tracker = ObjectInitializer.CreateDefaultSubobject<USimplePitchTracker>(this, TEXT("MyPitchTracker"));
 	isSilence = true;
@@ -49,6 +64,13 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 AMicrophoneInput::~AMicrophoneInput()
 {
 	delete wavFile;
+	if (voiceCapture.IsValid()) {
+		voiceCapture->Stop();
+		voiceCapture->Shutdown();
+	}
+	voiceCapture.Reset();
+	UE_LOG(LogTemp, Log, TEXT("Closing VoiceCapture."));
+
 	//delete tracker;
 }
 
@@ -108,7 +130,10 @@ void AMicrophoneInput::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	int maxBytes = 0;
 	uint32 bytesAvailable = 0;
-	EVoiceCaptureState::Type captureState = voiceCapture->GetCaptureState(bytesAvailable);
+	EVoiceCaptureState::Type captureState = EVoiceCaptureState::NotCapturing;
+	if (voiceCapture.IsValid()) {
+		captureState = voiceCapture->GetCaptureState(bytesAvailable);
+	}
 	FString bufforStatus = EVoiceCaptureState::ToString(captureState);
 	UE_LOG(LogTemp, Log, TEXT("Bytes available: %d"), (int)bytesAvailable);
 
@@ -121,7 +146,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		voiceCapture->GetVoiceData(buf, maxBytes, readBytes);
 		uint32 samples = readBytes / 2;
 
-		UE_LOG(LogTemp, Log, TEXT("ONSET new samples: %d"), samples);
+		UE_LOG(LogTemp, Log, TEXT("New samples: %d"), samples);
 		float* sampleBuf = new float[samples];
 		isSilence = NormalizeDataAndCheckForSilence((int16*)buf, buf, readBytes, sampleBuf, samples, volumedB, volumeAmplitude);
 
@@ -139,7 +164,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 			wavFile->writeData(sampleBuf, samples);
 		}
 		delete[] sampleBuf;
-		//delete buf;
+		delete[] buf;
 	}
 }
 
@@ -153,38 +178,43 @@ void AMicrophoneInput::TrackFundamentalFrequency(float* &sampleBuf, int samples)
 	///////////////////////////////////////////
 
 	if (features.size() > 0) {
+		if (isRecordingRecognizedFeatures) {
+			for (auto feature : features) {
+				recognizedFrequenciesToSave.push_back(feature.second);
+			}
+		}
 		std::sort(features.begin(), features.end(), [](auto &left, auto &right) {
 			return left.second < right.second;
 		});
-		for (auto feature : features) {
-			UE_LOG(LogTemp, Log, TEXT("My value: %f"), feature.second);
-		}
 		const auto median_it = features.begin() + features.size() / 2;
-		fundamental_frequency = (*median_it).second;
-		if (isRecordingRecognizedFeatures) {
-			recognizedFrequenciesToSave.push_back(fundamental_frequency);
-		}
+		int median_freq = (*median_it).second;
+		if (median_freq > 0) {
+			for (auto feature : features) {
 
-		if (fundamental_frequency > 0) {
-			if (!tracker->trackNewNote(fundamental_frequency)) {
-				GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
-			}
-			else {
-				const int trackedSoundToMidiNote = tracker->currentNote->getMidiNoteId();
-				if (bufferedMidiNotes.Num() == 0) {
-					bufferedMidiNotes.Add(trackedSoundToMidiNote);
-				}
-				else if (bufferedMidiNotes.Last() == trackedSoundToMidiNote) {
-					// Handle incrementing
+				UE_LOG(LogTemp, Log, TEXT("My value: %f"), feature.second);
+				fundamental_frequency = feature.second;
+				if (fundamental_frequency > 0) {
+					if (!tracker->trackNewNote(fundamental_frequency)) {
+						GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
+					}
+					else {
+						const int trackedSoundToMidiNote = tracker->currentNote->getMidiNoteId();
+						if (bufferedMidiNotes.Num() > 0 && bufferedMidiNotes.Contains(trackedSoundToMidiNote)) {
+							int idx = 0;
+							bufferedMidiNotes.Find(trackedSoundToMidiNote, idx);
+							bufferedMidiNotesOccurences[idx]++;
+						}
+						else {
+							bufferedMidiNotes.Add(trackedSoundToMidiNote);
+							bufferedMidiNotesOccurences.Add(1);
+						}
+						currentPitch = tracker->currentNote->getName();
+					}
 				}
 				else {
-					bufferedMidiNotes.Add(trackedSoundToMidiNote);
+					UE_LOG(LogTemp, Log, TEXT("Unrecognized frequency"));
 				}
-				currentPitch = tracker->currentNote->getName();
 			}
-		}
-		else {
-			UE_LOG(LogTemp, Log, TEXT("Unrecognized frequency"));
 		}
 	}
 	else {
