@@ -26,7 +26,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") float onsetParamSensitivity = 40.0f; //default value
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") float volumedB;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") float volumeAmplitude;
+	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") bool isInCallibrationMode;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") bool isSilence;
+	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") bool isWaitingForData;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") bool isOnsetDetected;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") int fundamental_frequency;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") FString currentPitch;	
@@ -36,7 +38,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") TArray<int> bufferedMidiNotes;
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") TArray<int> bufferedMidiNotesOccurences;
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float maxSoundValue = 0;
-
+	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float noiseLevel = 0;
 
 	TSharedPtr<class IVoiceCapture> voiceCapture;
 	TSharedPtr<class VampPluginHost> vampHost;
@@ -75,11 +77,23 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
 		void StopSavingAudioInput();
 
+	UFUNCTION(BlueprintCallable, Category = "Callibration")
+		void StartCallibration();
+
+	UFUNCTION(BlueprintCallable, Category = "Callibration")
+		void StopCallibration();
+
+	UFUNCTION(BlueprintCallable, Category = "Callibration")
+		float GetSilenceThresholdByCallibration();
+
+	UFUNCTION(BlueprintCallable, Category = "Callibration")
+		float GetNoiseLevelByCallibration();
+
 private:
 	template<typename T>
 	bool NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8, int32 buffSize, float* outBuf, uint32 outBuffSize, float& volumedB, float& volumeAmplitude);
 	void TrackFundamentalFrequency(float* &sampleBuf, int samples);
-	void TrackPercussionOnsets(float* &sampleBuf, int samples, int numberOfSamplesTracked);
+	void TrackPercussionOnsets(float* &sampleBuf, int samples);
 	static const unsigned int N = 4096;
 	const unsigned int sampleRate = 44100;
 	const unsigned int channels = 1;
@@ -89,4 +103,7 @@ private:
 	std::vector<float> recognizedOnsetsToSave;
 	WavFileWritter *wavFile = nullptr;
 	unsigned long int numberOfSamplesTracked = 0;
+	float callibratedAMSSum = 0;
+	float callibratedVolumeSum = 0;
+	int numberOfCheckedBuffers = 0;
 };

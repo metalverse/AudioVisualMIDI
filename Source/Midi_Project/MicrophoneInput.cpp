@@ -58,7 +58,9 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 	host = new VampPluginHost(sampleRate, vampBlockSize, vampStepSize, onsetParamThreshold, onsetParamSensitivity);
 	tracker = ObjectInitializer.CreateDefaultSubobject<USimplePitchTracker>(this, TEXT("MyPitchTracker"));
 	isSilence = true;
+	isWaitingForData = true;
 	isOnsetDetected = false;
+	isInCallibrationMode = false;
 }
 
 AMicrophoneInput::~AMicrophoneInput()
@@ -118,9 +120,14 @@ bool AMicrophoneInput::NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8
 	float meanSquare = 2 * totalSquare / samples;
 	float rms = FMath::Sqrt(meanSquare);
 	float amplitude = rms / 32768.0f;
-	vol = 20 * log10f(amplitude) + 85;
+	vol = 20 * log10f(amplitude) - noiseLevel;
 	vol2 = amplitude * 100;
 	UE_LOG(LogTemp, Log, TEXT("Max audio value: %f, avarage mean square: %f, normalized ams: %f"), maxSoundValue, AverageMeanSquare, (meanSquare/samples));
+	if (isInCallibrationMode) {
+		callibratedAMSSum += AverageMeanSquare;
+		callibratedVolumeSum += vol;
+		++numberOfCheckedBuffers;
+	}
 	return AverageMeanSquare < silenceTreshold;
 }
 
@@ -139,6 +146,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 
 	if (captureState == EVoiceCaptureState::Ok && bytesAvailable >= 0)
 	{
+		isWaitingForData = false;
 		maxBytes = bytesAvailable;
 		uint8* buf = new uint8[maxBytes];
 		memset(buf, 0, maxBytes);
@@ -150,21 +158,27 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		float* sampleBuf = new float[samples];
 		isSilence = NormalizeDataAndCheckForSilence((int16*)buf, buf, readBytes, sampleBuf, samples, volumedB, volumeAmplitude);
 
-		if (!isSilence && samples >= (unsigned)vampStepSize) {
-			/////// FREQS /////////
-			TrackFundamentalFrequency(sampleBuf, samples);
-		} else {
-			fundamental_frequency = 0;
-		}
-		/////// ONSETS /////////
-		TrackPercussionOnsets(sampleBuf, samples, numberOfSamplesTracked);
-		if(isSavingAudioInput) {
-			UE_LOG(LogTemp, Log, TEXT("ONSET Number of samples tracked from: %d to %d "), numberOfSamplesTracked, numberOfSamplesTracked+samples);
-			numberOfSamplesTracked += samples;
-			wavFile->writeData(sampleBuf, samples);
+		if (!isInCallibrationMode) {
+			if (!isSilence && samples >= (unsigned)vampStepSize) {
+				/////// FREQS /////////
+				TrackFundamentalFrequency(sampleBuf, samples);
+			}
+			else {
+				fundamental_frequency = 0;
+			}
+			/////// ONSETS /////////
+			TrackPercussionOnsets(sampleBuf, samples);
+			if (isSavingAudioInput) {
+				UE_LOG(LogTemp, Log, TEXT("ONSET Number of samples tracked from: %d to %d "), numberOfSamplesTracked, numberOfSamplesTracked + samples);
+				numberOfSamplesTracked += samples;
+				wavFile->writeData(sampleBuf, samples);
+			}
 		}
 		delete[] sampleBuf;
 		delete[] buf;
+	}
+	else {
+		isWaitingForData = true;
 	}
 }
 
@@ -193,26 +207,31 @@ void AMicrophoneInput::TrackFundamentalFrequency(float* &sampleBuf, int samples)
 
 				UE_LOG(LogTemp, Log, TEXT("My value: %f"), feature.second);
 				fundamental_frequency = feature.second;
-				if (fundamental_frequency > 0) {
-					if (!tracker->trackNewNote(fundamental_frequency)) {
-						GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
-					}
-					else {
-						const int trackedSoundToMidiNote = tracker->currentNote->getMidiNoteId();
-						if (bufferedMidiNotes.Num() > 0 && bufferedMidiNotes.Contains(trackedSoundToMidiNote)) {
-							int idx = 0;
-							bufferedMidiNotes.Find(trackedSoundToMidiNote, idx);
-							bufferedMidiNotesOccurences[idx]++;
-						}
-						else {
-							bufferedMidiNotes.Add(trackedSoundToMidiNote);
-							bufferedMidiNotesOccurences.Add(1);
-						}
-						currentPitch = tracker->currentNote->getName();
-					}
+				int trackedSoundToMidiNote = 0;
+				// If sound not recognized as a music tone
+				if (!(fundamental_frequency > 0)) {
+					trackedSoundToMidiNote = -1;
+					UE_LOG(LogTemp, Log, TEXT("Unrecognized frequency"));
+					currentPitch = "?";
+				}
+				else if (!tracker->trackNewNote(fundamental_frequency)) {
+					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::SanitizeFloat(fundamental_frequency).Append(" Hz. Note unrecognized!"));
+					trackedSoundToMidiNote = -1;
+				}
+				// If recognized properly
+				else {
+					trackedSoundToMidiNote = tracker->currentNote->getMidiNoteId();
+					currentPitch = tracker->currentNote->getName();
+				}
+				// Adding tracked note to buffer
+				if (bufferedMidiNotes.Num() > 0 && bufferedMidiNotes.Contains(trackedSoundToMidiNote)) {
+					int idx = 0;
+					bufferedMidiNotes.Find(trackedSoundToMidiNote, idx);
+					bufferedMidiNotesOccurences[idx]++;
 				}
 				else {
-					UE_LOG(LogTemp, Log, TEXT("Unrecognized frequency"));
+					bufferedMidiNotes.Add(trackedSoundToMidiNote);
+					bufferedMidiNotesOccurences.Add(1);
 				}
 			}
 		}
@@ -223,7 +242,7 @@ void AMicrophoneInput::TrackFundamentalFrequency(float* &sampleBuf, int samples)
 	}
 }
 
-void AMicrophoneInput::TrackPercussionOnsets(float* &sampleBuf, int samples, int numberOfSamplesTracked) {
+void AMicrophoneInput::TrackPercussionOnsets(float* &sampleBuf, int samples) {
 	//////////////// ONSET DETECTOR /////////////////////
 	if (host->runPlugin("vamp-example-plugins", "percussiononsets", sampleBuf, samples, true, numberOfSamplesTracked - 1) != 0) {
 		UE_LOG(LogTemp, Log, TEXT("Failed to run percussiononsets plugin!"));
@@ -334,4 +353,22 @@ void AMicrophoneInput::StopSavingAudioInput() {
 	isSavingAudioInput = false;
 	wavFile->closeFile();
 	wavFile = nullptr;
+}
+
+void AMicrophoneInput::StartCallibration() {
+	callibratedAMSSum = 0;
+	numberOfCheckedBuffers = 0;
+	isInCallibrationMode = true;
+}
+
+void AMicrophoneInput::StopCallibration() {
+	isInCallibrationMode = false;
+}
+
+float AMicrophoneInput::GetSilenceThresholdByCallibration() {
+	return (callibratedAMSSum / numberOfCheckedBuffers) * 1.5f;
+}
+
+float AMicrophoneInput::GetNoiseLevelByCallibration() {
+	return callibratedVolumeSum / numberOfCheckedBuffers;
 }
