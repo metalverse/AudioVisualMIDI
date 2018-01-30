@@ -37,12 +37,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") float silenceTreshold = 75.f * 75.f;
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") TArray<int> bufferedMidiNotes;
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") TArray<int> bufferedMidiNotesOccurences;
+	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") TArray<int> bufferedOnsetsFrames;
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float maxSoundValue = 0;
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float noiseLevel = 0;
+	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float onsetsForTempoMaxFrameDiff = sampleRate * 3.0f;
+	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") bool newTempoTracked = false;
+	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float trackedTempoInBpm = 120;
+	UPROPERTY(Instanced, EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") USimplePitchTracker* tracker;
 
 	TSharedPtr<class IVoiceCapture> voiceCapture;
-	TSharedPtr<class VampPluginHost> vampHost;
-	UPROPERTY(Instanced, EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") USimplePitchTracker* tracker;
+	//TSharedPtr<class VampPluginHost> vampHost;
+	TSharedPtr<class TempoDetector> tempoDetector;
+
 
 	AMicrophoneInput(const FObjectInitializer& ObjectInitializer);
 	~AMicrophoneInput();

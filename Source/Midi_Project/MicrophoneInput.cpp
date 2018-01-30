@@ -3,18 +3,9 @@
 #include "Midi_Project.h"
 #include "MicrophoneInput.h"
 #include "VampPluginHost.h"
+#include "TempoDetector.h"
 
 #include <algorithm>
-
-//#include "vamp/vamp.h"
-//#include "vamp-sdk/PluginAdapter.h"
-
-/*#include "vamp-plugins/SpectralCentroid.h"
-#include "vamp-plugins/ZeroCrossing.h"
-#include "vamp-plugins/PercussionOnsetDetector.h"
-#include "vamp-plugins/FixedTempoEstimator.h"
-#include "vamp-plugins/AmplitudeFollower.h"
-#include "vamp-plugins/PowerSpectrum.h"*/
 
 #include "vamp-hostsdk/PluginHostAdapter.h"
 #include "vamp-hostsdk/PluginInputDomainAdapter.h"
@@ -57,6 +48,7 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 	}
 	host = new VampPluginHost(sampleRate, vampBlockSize, vampStepSize, onsetParamThreshold, onsetParamSensitivity);
 	tracker = ObjectInitializer.CreateDefaultSubobject<USimplePitchTracker>(this, TEXT("MyPitchTracker"));
+	tempoDetector = MakeShareable(new TempoDetector(sampleRate, sampleRate * 3, sampleRate * 8));
 	isSilence = true;
 	isWaitingForData = true;
 	isOnsetDetected = false;
@@ -72,8 +64,6 @@ AMicrophoneInput::~AMicrophoneInput()
 	}
 	voiceCapture.Reset();
 	UE_LOG(LogTemp, Log, TEXT("Closing VoiceCapture."));
-
-	//delete tracker;
 }
 
 
@@ -247,12 +237,20 @@ void AMicrophoneInput::TrackPercussionOnsets(float* &sampleBuf, int samples) {
 	if (host->runPlugin("vamp-example-plugins", "percussiononsets", sampleBuf, samples, true, numberOfSamplesTracked - 1) != 0) {
 		UE_LOG(LogTemp, Log, TEXT("Failed to run percussiononsets plugin!"));
 	}
+	newTempoTracked = false;
 	auto onsetFeatures = host->getExtractedFeatures();
-
 	if (onsetFeatures.size() > 0) {
+
 		for (auto onsetFeature : onsetFeatures) {
 			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::FromInt(numberOfSamplesTracked + onsetFeature.first).Append(" SAMPLE IS ONSET"));
 			UE_LOG(LogTemp, Log, TEXT("ONSET Detected onset sample: %d, sound volume: %f"), numberOfSamplesTracked + onsetFeature.first, maxSoundValue);
+			tempoDetector->update(true, samples, onsetFeature.first);
+			float tmpTempo = tempoDetector->calculateTempo();
+			if (tmpTempo > 0) {
+				trackedTempoInBpm = tmpTempo;
+				newTempoTracked = true;
+			}
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::SanitizeFloat(tmpTempo).Append(" BPM"));
 			if (isRecordingRecognizedFeatures) {
 				float onsetFrame = 1.0f * numberOfSamplesTracked + onsetFeature.first;
 				recognizedOnsetsToSave.push_back(onsetFrame);
@@ -261,6 +259,7 @@ void AMicrophoneInput::TrackPercussionOnsets(float* &sampleBuf, int samples) {
 		isOnsetDetected = true;
 	}
 	else {
+		tempoDetector->update(false, samples);
 		isOnsetDetected = false;
 	}
 }
