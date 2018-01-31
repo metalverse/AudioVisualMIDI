@@ -20,15 +20,28 @@ public:
 	void setMaxTrackingFrameDifference(int maxTrackFrameDiff) {
 		maxTrackingFrameDifference = maxTrackFrameDiff;
 	}
+	void setCurrentMidiTempo(float tempo) {
+		currentMidiTempo = tempo;
+	}
 
 private:
+	enum TempoMode {
+		REALTIME, NORMAL
+	};
+
+	TempoMode mode;
+	float currentMidiTempo;
 	int totalTrackedSamples;
 	int firstOnsetFrame;
 	int lastOnsetFrame;
 	std::list<int> trackedOnsets;
+
 	int maxFrameDifference;
 	int maxTrackingFrameDifference;
+	int maxOnsetsTracked;
 	int sampleRate;
 	float permissibleCoefficientOfVariation = .35f;
+
 	void resetBuffer();
+	float interpolateTempoByLastNotes();
 };

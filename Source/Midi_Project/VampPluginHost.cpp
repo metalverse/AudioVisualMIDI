@@ -189,7 +189,7 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 				plugbuf[c][j] = 0.0f;
 				++j;
 			}
-			UE_LOG(LogTemp, Log, TEXT("Plugbuf with value: %d, zeroed: %d, input: %d, stepsRemaining: %d"), count, params.pBlockSize-count, inputSize, finalStepsRemaining);
+			//UE_LOG(LogTemp, Log, TEXT("Plugbuf with value: %d, zeroed: %d, input: %d, stepsRemaining: %d"), count, params.pBlockSize-count, inputSize, finalStepsRemaining);
 		}
 		Plugin::OutputList outputs = runningPlugin->getOutputDescriptors();
 		Plugin::OutputDescriptor od;
@@ -202,7 +202,7 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 		
 		rt = RealTime::frame2RealTime(currentStep * params.pStepSize, sampleRate);
 
-		UE_LOG(LogTemp, Log, TEXT("Processing. Current step: %d"), currentStep);
+		//UE_LOG(LogTemp, Log, TEXT("Processing. Current step: %d"), currentStep);
 		features = runningPlugin->process(plugbuf, rt);
 
 		od = outputs[0]; //outputsNo = 0

@@ -132,7 +132,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		captureState = voiceCapture->GetCaptureState(bytesAvailable);
 	}
 	FString bufforStatus = EVoiceCaptureState::ToString(captureState);
-	UE_LOG(LogTemp, Log, TEXT("Bytes available: %d"), (int)bytesAvailable);
+	//UE_LOG(LogTemp, Log, TEXT("Bytes available: %d"), (int)bytesAvailable);
 
 	if (captureState == EVoiceCaptureState::Ok && bytesAvailable >= 0)
 	{
@@ -242,15 +242,16 @@ void AMicrophoneInput::TrackPercussionOnsets(float* &sampleBuf, int samples) {
 	if (onsetFeatures.size() > 0) {
 
 		for (auto onsetFeature : onsetFeatures) {
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::FromInt(numberOfSamplesTracked + onsetFeature.first).Append(" SAMPLE IS ONSET"));
+			//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::FromInt(numberOfSamplesTracked + onsetFeature.first).Append(" SAMPLE IS ONSET"));
 			UE_LOG(LogTemp, Log, TEXT("ONSET Detected onset sample: %d, sound volume: %f"), numberOfSamplesTracked + onsetFeature.first, maxSoundValue);
 			tempoDetector->update(true, samples, onsetFeature.first);
 			float tmpTempo = tempoDetector->calculateTempo();
+			tempoDetector->setCurrentMidiTempo(tmpTempo);
 			if (tmpTempo > 0) {
 				trackedTempoInBpm = tmpTempo;
 				newTempoTracked = true;
 			}
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::SanitizeFloat(tmpTempo).Append(" BPM"));
+			//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::SanitizeFloat(tmpTempo).Append(" BPM"));
 			if (isRecordingRecognizedFeatures) {
 				float onsetFrame = 1.0f * numberOfSamplesTracked + onsetFeature.first;
 				recognizedOnsetsToSave.push_back(onsetFrame);
@@ -371,3 +372,8 @@ float AMicrophoneInput::GetSilenceThresholdByCallibration() {
 float AMicrophoneInput::GetNoiseLevelByCallibration() {
 	return callibratedVolumeSum / numberOfCheckedBuffers;
 }
+
+void AMicrophoneInput::SetDetectorMidiTempo(float tempo) {
+	tempoDetector->setCurrentMidiTempo(tempo);
+}
+

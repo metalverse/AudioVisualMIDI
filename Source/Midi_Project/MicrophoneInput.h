@@ -95,6 +95,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Callibration")
 		float GetNoiseLevelByCallibration();
 
+	UFUNCTION(BlueprintCallable, Category = "Callibration")
+		void SetDetectorMidiTempo(float tempo);
+
 private:
 	template<typename T>
 	bool NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8, int32 buffSize, float* outBuf, uint32 outBuffSize, float& volumedB, float& volumeAmplitude);
