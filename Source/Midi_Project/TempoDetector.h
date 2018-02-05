@@ -12,7 +12,7 @@ class MIDI_PROJECT_API TempoDetector
 public:
 	TempoDetector(int sampleRate, int maxFrameDiff, int maxTrackingFrameDiff);
 	~TempoDetector();
-	void update(bool newValue, int deltaSamples, int frame = 0);
+	bool update(bool newValue, int deltaSamples, int frame = 0);
 	float calculateTempo();
 	void setMaxFrameDifference(int maxFrameDiff) {
 		maxFrameDifference = maxFrameDiff;
@@ -28,6 +28,7 @@ private:
 	enum TempoMode {
 		REALTIME, NORMAL
 	};
+	int metronom = 1;
 
 	TempoMode mode;
 	float currentMidiTempo;
@@ -37,6 +38,7 @@ private:
 	std::list<int> trackedOnsets;
 
 	int maxFrameDifference;
+	int minFrameDifference = 4000;
 	int maxTrackingFrameDifference;
 	int maxOnsetsTracked;
 	int sampleRate;

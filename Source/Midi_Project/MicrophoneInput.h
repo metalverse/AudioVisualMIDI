@@ -11,6 +11,7 @@
 #include "SimplePitchTracker.h"
 #include "SimplePitch.h"
 #include "WavFileWritter.h"
+#include "WavFileReader.h"
 #include "MicrophoneInput.generated.h"
 
 

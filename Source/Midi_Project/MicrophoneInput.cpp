@@ -49,6 +49,7 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 	host = new VampPluginHost(sampleRate, vampBlockSize, vampStepSize, onsetParamThreshold, onsetParamSensitivity);
 	tracker = ObjectInitializer.CreateDefaultSubobject<USimplePitchTracker>(this, TEXT("MyPitchTracker"));
 	tempoDetector = MakeShareable(new TempoDetector(sampleRate, sampleRate * 3, sampleRate * 8));
+
 	isSilence = true;
 	isWaitingForData = true;
 	isOnsetDetected = false;
@@ -71,6 +72,39 @@ AMicrophoneInput::~AMicrophoneInput()
 void AMicrophoneInput::BeginPlay()
 {
 	Super::BeginPlay();
+	WavFileReader reader("D:\\Studia\\Praca Magisterska\\Plugin tests\\test-onset.wav", "D:\\Studia\\Praca Magisterska\\Plugin tests\\test.txt");
+	float* buff = nullptr;
+	int samplesRead = 0;
+	reader.getData(&buff, samplesRead);
+
+	if (host->runPlugin("vamp-example-plugins", "percussiononsets", buff, samplesRead, true, -1) != 0) {
+		UE_LOG(LogTemp, Log, TEXT("Failed to run percussiononsets plugin!"));
+	}
+	auto onsetFeatures = host->getExtractedFeatures();
+	if (onsetFeatures.size() > 0) {
+		for (auto onsetFeature : onsetFeatures) {
+			float onsetFrame = onsetFeature.first;
+			recognizedOnsetsToSave.push_back(onsetFrame);
+		}
+	}
+
+	bool AllowOverwriting = true;
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	FString onsetsTextToSave = "";
+	for (float const& value : recognizedOnsetsToSave) {
+		onsetsTextToSave.Append(FString::SanitizeFloat(value)).Append(LINE_TERMINATOR);
+	}
+	TCHAR* directory = TEXT("D:\\Studia\\Praca Magisterska\\Plugin tests\\");
+	if (PlatformFile.CreateDirectoryTree(directory))
+	{
+		// Get absolute file path
+		FString onsetAbsoluteFilePath = directory + FString("detected-onsets.txt");
+
+		if (AllowOverwriting || !PlatformFile.FileExists(*onsetAbsoluteFilePath))
+		{
+			FFileHelper::SaveStringToFile(onsetsTextToSave, *onsetAbsoluteFilePath);
+		}
+	}
 }
 
 template<typename T>
@@ -242,14 +276,18 @@ void AMicrophoneInput::TrackPercussionOnsets(float* &sampleBuf, int samples) {
 	if (onsetFeatures.size() > 0) {
 
 		for (auto onsetFeature : onsetFeatures) {
-			//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::FromInt(numberOfSamplesTracked + onsetFeature.first).Append(" SAMPLE IS ONSET"));
+			//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::FromInt(numberOfSamplesTracked + samples).Append(" SAMPLES"));
+			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::FromInt(numberOfSamplesTracked + onsetFeature.first).Append(" SAMPLE IS ONSET"));
 			UE_LOG(LogTemp, Log, TEXT("ONSET Detected onset sample: %d, sound volume: %f"), numberOfSamplesTracked + onsetFeature.first, maxSoundValue);
-			tempoDetector->update(true, samples, onsetFeature.first);
-			float tmpTempo = tempoDetector->calculateTempo();
-			tempoDetector->setCurrentMidiTempo(tmpTempo);
-			if (tmpTempo > 0) {
-				trackedTempoInBpm = tmpTempo;
-				newTempoTracked = true;
+			if (!newTempoTracked) {
+				if (tempoDetector->update(true, samples, onsetFeature.first)) {
+					float tmpTempo = tempoDetector->calculateTempo();
+					tempoDetector->setCurrentMidiTempo(tmpTempo);
+					if (tmpTempo > 0) {
+						trackedTempoInBpm = tmpTempo;
+						newTempoTracked = true;
+					}
+				}
 			}
 			//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::SanitizeFloat(tmpTempo).Append(" BPM"));
 			if (isRecordingRecognizedFeatures) {

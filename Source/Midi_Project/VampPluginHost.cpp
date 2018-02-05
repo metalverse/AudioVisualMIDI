@@ -2,8 +2,8 @@
 
 #include "Midi_Project.h"
 #include "VampPluginHost.h"
+#include "vamp-sdk/FFT.h"
 #include <iostream>
-
 
 std::vector<std::pair<int, float>> VampPluginHost::getExtractedFeatures() {
 	return extractedFeatures;
@@ -47,6 +47,9 @@ bool VampPluginHost::initPlugin(Plugin* &pluginToInit, const std::string &libNam
 			params.pBlockSize = params.pStepSize;
 		}
 	}
+	//if (pluginToInit->getInputDomain() == Plugin::FrequencyDomain) {
+	//	params.pBlockSize = params.pStepSize * 2;
+	//}
 	params.pOverlapSize = params.pBlockSize - params.pStepSize;
 	params.pBlockSize = bSize;
 	params.pStepSize = sSize;
@@ -66,7 +69,6 @@ bool VampPluginHost::initPlugin(Plugin* &pluginToInit, const std::string &libNam
 VampPluginHost::VampPluginHost(float sR, int bSize, int sSize, float onsetThreshold, float onsetSensitivity)
 {
 	sampleRate = sR;
-
 	vector<string> path = PluginHostAdapter::getPluginPath();
 	FString searchDirectory = path[0].c_str();
 	UE_LOG(LogTemp, Log, TEXT("Plugin search directory: %s"), *searchDirectory);
@@ -75,19 +77,36 @@ VampPluginHost::VampPluginHost(float sR, int bSize, int sSize, float onsetThresh
 
 	initPlugin(pluginPyin, "pyin", "yin", pyinParams, 2048, 512);
 	initPlugin(pluginOnsetDetector, "vamp-example-plugins", "percussiononsets", onsetDetectorParams, 1024, 512);
+
 	overlapBufferSize = 2 * 512;
 
-	pluginOnsetDetector->setParameter("threshold", onsetThreshold);
-	pluginOnsetDetector->setParameter("sensitivity", onsetSensitivity);
+	UE_LOG(LogTemp, Log, TEXT("Onset program size: %d"), pluginOnsetDetector->getPrograms().size());
+	for (auto program : pluginOnsetDetector->getOutputDescriptors()) {
+		UE_LOG(LogTemp, Log, TEXT("Onset output: %s"), program.description.c_str());
+	}
+	for (auto program : pluginPyin->getPrograms()) {
+		UE_LOG(LogTemp, Log, TEXT("Yin program: %s"), program.c_str());
+	}
+	pluginOnsetDetector->setParameter("threshold", 5);
+	pluginOnsetDetector->setParameter("sensitivity", 35);
+
+	//pluginOnsetDetector1->setParameter("threshold", 20);
+	//pluginOnsetDetector1->setParameter("sensitivity", 100);
+	//if (!pluginOnsetDetector->initialise(1, pyinParams.pStepSize, pyinParams.pBlockSize)) {
+	//		UE_LOG(LogTemp, Log, TEXT("Error initializing yin plugin!"));
+	//}
+	//if (!pluginOnsetDetector->initialise(1, 2*onsetDetectorParams.pStepSize, 2*onsetDetectorParams.pBlockSize)) {
+	//	UE_LOG(LogTemp, Log, TEXT("Error initializing onset plugin!"));
+	//}
 
 	UE_LOG(LogTemp, Log, TEXT("Parameter ID: percussiononsets ||| Current threshold: %f ||| Current sensitivity: %f"), pluginOnsetDetector->getParameter("threshold"), pluginOnsetDetector->getParameter("sensitivity"));
 }
 
 VampPluginHost::~VampPluginHost(){
-	/*delete[] overlapBuffer;
+	delete[] overlapBuffer;
 	delete debugWavFile;
 	delete pluginPyin;
-	delete pluginOnsetDetector;*/
+	delete pluginOnsetDetector;
 }
 
 /* -*- c-basic-offset: 4 indent-tabs-mode: nil -*-  vi:set ts=8 sts=4 sw=4: */
@@ -140,10 +159,10 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 
 	int currentStep = 0;
 
-	if (!runningPlugin->initialise(channels, params.pStepSize, params.pBlockSize)) {
-		UE_LOG(LogTemp, Log, TEXT("Error initializing plugin!"));
-		return -1;
+	if (!runningPlugin->initialise(1, params.pStepSize, params.pBlockSize)) {
+		UE_LOG(LogTemp, Log, TEXT("Error initializing X plugin!"));
 	}
+
 	extractedFeatures.clear();
 	int	leftRange = 0;
 	int rightRange = 0;
@@ -202,8 +221,18 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 		
 		rt = RealTime::frame2RealTime(currentStep * params.pStepSize, sampleRate);
 
-		//UE_LOG(LogTemp, Log, TEXT("Processing. Current step: %d"), currentStep);
-		features = runningPlugin->process(plugbuf, rt);
+		if (soname == "vamp-example-plugins" && id == "percussiononsets") {
+			float** plugbufFft = new float*[channels];
+			plugbufFft[0] = new float[params.pBlockSize * 2];
+			/*for (int i = 0; i < (params.pBlockSize * 2); ++i) {
+				plugbufFft[0][i] = 0;
+			}*/
+			forwardFft(params.pBlockSize, plugbuf[0], plugbufFft[0]);
+			features = runningPlugin->process(plugbufFft, rt);
+			delete[] plugbufFft;
+		} else {
+			features = runningPlugin->process(plugbuf, rt);
+		}
 
 		od = outputs[0]; //outputsNo = 0
 
@@ -263,25 +292,6 @@ double VampPluginHost::toSeconds(const RealTime &time)
 	return time.sec + double(time.nsec + 1) / 1000000000.0;
 }
 
-void VampPluginHost::printPluginPath(bool verbose)
-{
-	if (verbose) {
-		cout << "\nVamp plugin search path: ";
-	}
-
-	vector<string> path = PluginHostAdapter::getPluginPath();
-	for (size_t i = 0; i < path.size(); ++i) {
-		if (verbose) {
-			cout << "[" << path[i] << "]";
-		}
-		else {
-			cout << path[i] << endl;
-		}
-	}
-
-	if (verbose) cout << endl;
-}
-
 static string header(string text, int level)
 {
 	string out = '\n' + text + '\n';
@@ -290,4 +300,25 @@ static string header(string text, int level)
 	}
 	out += '\n';
 	return out;
+}
+
+void VampPluginHost::forwardFft(int n, const float *realInput, float *complexOutput)
+{
+	kiss_fft_cfg c = kiss_fft_alloc(n, false, NULL, NULL);
+	kiss_fft_cpx *in = new kiss_fft_cpx[n];
+	kiss_fft_cpx *out = new kiss_fft_cpx[n];
+	for (int i = 0; i < n; ++i) {
+		out[i].r = 0;
+		out[i].i = 0;
+		in[i].r = realInput[i];
+		in[i].i = 0;
+	}
+	kiss_fft(c, in, out);
+	for (int i = 0; i < n ; ++i) {
+		complexOutput[2 * i] = out[i].r;
+		complexOutput[2 * i + 1] = out[i].i;
+	}
+	kiss_fft_free(c);
+	delete[] in;
+	delete[] out;
 }

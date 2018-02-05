@@ -9,6 +9,8 @@
 #include <iostream>
 #include <fstream>
 #include <set>
+
+#include "tools/kiss_fftnd.h"
 //#include <vamp-hostsdk/sndfile.h>
 
 #include <cstring>
@@ -65,6 +67,8 @@ private:
 	PluginLoader *loader;
 	Plugin *pluginPyin;
 	Plugin *pluginOnsetDetector;
+	Plugin *pluginOnsetDetector1;
+	//Plugin *pluginOnsetDetector2;
 	double toSeconds(const RealTime &time);
 	bool initPlugin(Plugin* &pluginToInit, const std::string &libName, const std::string &plugName, pluginParams &params, int bSize, int sSize);
 	float* overlapBuffer = nullptr;
@@ -77,9 +81,7 @@ public:
 	std::vector<std::pair<int, float>> extractedFeatures;
 	VampPluginHost(float, int, int, float, float);
 	~VampPluginHost();
-	void transformInput(float *, size_t);
-	void fft(unsigned int, bool, double *, double *, double *, double *);
-	void printPluginPath(bool verbose);
+	void forwardFft(int n, const float *realInput, float *complexOutput);
 	int runPlugin(string soname, string id, float *inputBuffer, int inputSize, bool runInOverlapMode, int startFrame);
 	std::vector<std::pair<int, float>> getExtractedFeatures();
 };

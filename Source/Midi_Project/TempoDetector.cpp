@@ -20,10 +20,21 @@ TempoDetector::~TempoDetector()
 {
 }
 
-void TempoDetector::update(bool newValue, int deltaSamples, int frame)
+bool TempoDetector::update(bool newValue, int deltaSamples, int frame)
 {
+	bool status = true;
 	if ((deltaSamples + totalTrackedSamples) - lastOnsetFrame > maxFrameDifference) {
 		resetBuffer();
+		if (mode == TempoMode::REALTIME) {
+			mode = TempoMode::NORMAL;
+		}
+		return false;
+	}
+	int tmpOffset = totalTrackedSamples + frame - lastOnsetFrame;
+	if (newValue && (tmpOffset < (trackedOnsets.back() / 2.2f) || tmpOffset < minFrameDifference)) {
+		UE_LOG(LogTemp, Log, TEXT("TempoDetector. Action. Too short gap: %d"), tmpOffset);
+		totalTrackedSamples += deltaSamples;
+		return false;
 	}
 	while (totalTrackedSamples - firstOnsetFrame > maxTrackingFrameDifference 
 		&& trackedOnsets.size() > 1 && trackedOnsets.size() > maxOnsetsTracked) 
@@ -34,9 +45,17 @@ void TempoDetector::update(bool newValue, int deltaSamples, int frame)
 	if (newValue) {
 		if (mode == TempoMode::REALTIME) {
 			int newFrameDifference = totalTrackedSamples + frame - lastOnsetFrame;
-			if (abs(newFrameDifference - trackedOnsets.back()) > .4f * trackedOnsets.back()) {
-				UE_LOG(LogTemp, Log, TEXT("TempoDetector. Switching to NORMAL mode"));
+			UE_LOG(LogTemp, Log, TEXT("TempoDetector. New frame difference %d, metronom: %d"), newFrameDifference, metronom);
+			metronom = metronom % 4;
+			metronom++;
+			if (abs(newFrameDifference - trackedOnsets.back()) > 2.0f * trackedOnsets.back()) {
+				UE_LOG(LogTemp, Log, TEXT("TempoDetector. Action. Too long gap: %d, switching to NORMAL mode"), abs(newFrameDifference - trackedOnsets.back()));
 				mode = TempoMode::NORMAL;
+				resetBuffer();
+				status = false;
+			} else if ((newFrameDifference - trackedOnsets.back()) > 0.8 * trackedOnsets.back()) {
+				UE_LOG(LogTemp, Log, TEXT("TempoDetector. Action. Deviding too long gap: %d"), newFrameDifference);
+				newFrameDifference /= 2;
 			}
 			trackedOnsets.push_back(newFrameDifference);
 			lastOnsetFrame = totalTrackedSamples + frame;
@@ -48,12 +67,12 @@ void TempoDetector::update(bool newValue, int deltaSamples, int frame)
 			}
 			else if (trackedOnsets.size() == 1 && trackedOnsets.back() == 0) {
 				trackedOnsets.pop_front();
-				trackedOnsets.push_back(totalTrackedSamples + frame - lastOnsetFrame);
+				trackedOnsets.push_back(totalTrackedSamples - lastOnsetFrame + frame);
 				lastOnsetFrame = totalTrackedSamples + frame;
 				totalTrackedSamples += deltaSamples;
 			}
 			else {
-				trackedOnsets.push_back(totalTrackedSamples + frame - lastOnsetFrame);
+				trackedOnsets.push_back(totalTrackedSamples - lastOnsetFrame + frame);
 				lastOnsetFrame = totalTrackedSamples + frame;
 				totalTrackedSamples += deltaSamples;
 			}
@@ -61,6 +80,7 @@ void TempoDetector::update(bool newValue, int deltaSamples, int frame)
 	} else if (trackedOnsets.size() > 0) {
 		totalTrackedSamples += deltaSamples;
 	}
+	return status;
 }
 
 /* 
@@ -73,7 +93,10 @@ void TempoDetector::update(bool newValue, int deltaSamples, int frame)
 float TempoDetector::calculateTempo()
 {
 	if (mode == TempoMode::REALTIME) {
-		return (60.f / ((1.f * trackedOnsets.back()) / sampleRate));
+		float tempo = (60.f / (1.0f * trackedOnsets.back() / sampleRate));
+		UE_LOG(LogTemp, Log, TEXT("TempoDetector. Action. Returning tempo: %f"), tempo);
+		//float avgLast = (float)(trackedOnsets.back() + *std::prev(trackedOnsets.end(), 2)) / 2;
+		return tempo;
 	} else {
 		int size = trackedOnsets.size();
 		if (trackedOnsets.size() < 4) {
