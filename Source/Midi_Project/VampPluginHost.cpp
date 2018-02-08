@@ -68,7 +68,8 @@ bool VampPluginHost::initPlugin(Plugin* &pluginToInit, const std::string &libNam
 		return false;
 	}
 	else {
-		UE_LOG(LogTemp, Log, TEXT("Plugin loaded! (%s)"), pluginToInit->getIdentifier().c_str());
+		FString id = pluginToInit->getIdentifier().c_str();
+		UE_LOG(LogTemp, Log, TEXT("Plugin loaded! (%s)"), *id);
 	}
 
 	params.pBlockSize = pluginToInit->getPreferredBlockSize();
@@ -227,9 +228,7 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 		if (soname == "vamp-example-plugins" && id == "percussiononsets") {
 			float** plugbufFft = new float*[channels];
 			plugbufFft[0] = new float[params.pBlockSize * 2];
-			/*for (int i = 0; i < (params.pBlockSize * 2); ++i) {
-				plugbufFft[0][i] = 0;
-			}*/
+
 			forwardFft(params.pBlockSize, plugbuf[0], plugbufFft[0]);
 			features = runningPlugin->process(plugbufFft, rt);
 			delete[] plugbufFft;
@@ -260,6 +259,7 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 				}
 				double sec = toSeconds(rt);
 				int frame = int(round(sec * sampleRate));
+				if (id == "percussiononsets" && overlapBuffer != nullptr) frame -= overlapBufferSize;
 				if (f.values.size() == 0) {
 					extractedFeatures.emplace_back(frame, 0.0f);
 					UE_LOG(LogTemp, Log, TEXT("FRAME: %d"), frame);
@@ -293,6 +293,7 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 
 bool VampPluginHost::loadVampPlugin(Plugin* &pluginToInit, const std::string &libName, const std::string &plugName) {
 
+	loader = PluginLoader::getInstance();
 	PluginLoader::PluginKey key = loader->composePluginKey(libName, plugName);
 	pluginToInit = loader->loadPlugin(key, sampleRate, PluginLoader::ADAPT_ALL_SAFE);
 	if (!pluginToInit) {
@@ -300,29 +301,31 @@ bool VampPluginHost::loadVampPlugin(Plugin* &pluginToInit, const std::string &li
 		return false;
 	}
 	else {
-		UE_LOG(LogTemp, Log, TEXT("Plugin loaded! (%s)"), pluginToInit->getIdentifier().c_str());
+		FString id = pluginToInit->getIdentifier().c_str();
+		UE_LOG(LogTemp, Log, TEXT("Plugin loaded! (%s)"), *id);
 	}
 	return true;
 }
 
 bool VampPluginHost::initializeVampPlugin(const std::string &plugName, const int bSize, const int sSize, TMap<FString, float> params, const int channels = 1) {
 	Plugin* pluginToInit = nullptr;
-	UE_LOG(LogTemp, Log, TEXT("Preferred block size: %d | Preferred step size: %d"), pluginToInit->getPreferredBlockSize(), pluginToInit->getPreferredStepSize());
 	if (plugName == "yin") {
 		pluginToInit = pluginPyin;
 		pyinParams.pBlockSize = bSize;
 		pyinParams.pStepSize = sSize;
 		pyinParams.pOverlapSize = bSize - sSize;
+
 	} else if(plugName == "percussiononsets") {
 		pluginToInit = pluginOnsetDetector;
-		pyinParams.pBlockSize = bSize;
-		pyinParams.pStepSize = sSize;
-		pyinParams.pOverlapSize = bSize - sSize;
+		onsetDetectorParams.pBlockSize = bSize;
+		onsetDetectorParams.pStepSize = sSize;
+		onsetDetectorParams.pOverlapSize = bSize - sSize;
 		overlapBufferSize = 2 * sSize;
 	} else {
 		UE_LOG(LogTemp, Log, TEXT("Unknown plugin name!"));
 		return false;
 	}
+	UE_LOG(LogTemp, Log, TEXT("Preferred block size: %d | Preferred step size: %d"), pluginToInit->getPreferredBlockSize(), pluginToInit->getPreferredStepSize());
 	for (const auto& param : params) {
 		UE_LOG(LogTemp, Log, TEXT("Changing parameter %s with value %f for plugin %s"), *(param.Key), param.Value, plugName.c_str());
 		pluginToInit->setParameter(std::string(TCHAR_TO_UTF8(*param.Key)), param.Value);

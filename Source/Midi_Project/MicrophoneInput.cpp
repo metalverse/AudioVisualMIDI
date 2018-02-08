@@ -72,7 +72,7 @@ AMicrophoneInput::~AMicrophoneInput()
 void AMicrophoneInput::BeginPlay()
 {
 	Super::BeginPlay();
-	WavFileReader reader("D:\\Studia\\Praca Magisterska\\Plugin tests\\test-onset.wav", "D:\\Studia\\Praca Magisterska\\Plugin tests\\test.txt");
+	/*WavFileReader reader("D:\\Studia\\Praca Magisterska\\Plugin tests\\test-onset.wav", "D:\\Studia\\Praca Magisterska\\Plugin tests\\test.txt");
 	float* buff = nullptr;
 	int samplesRead = 0;
 	reader.getData(&buff, samplesRead);
@@ -104,7 +104,7 @@ void AMicrophoneInput::BeginPlay()
 		{
 			FFileHelper::SaveStringToFile(onsetsTextToSave, *onsetAbsoluteFilePath);
 		}
-	}
+	}*/
 }
 
 template<typename T>
