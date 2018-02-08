@@ -67,8 +67,6 @@ private:
 	PluginLoader *loader;
 	Plugin *pluginPyin;
 	Plugin *pluginOnsetDetector;
-	Plugin *pluginOnsetDetector1;
-	//Plugin *pluginOnsetDetector2;
 	double toSeconds(const RealTime &time);
 	bool initPlugin(Plugin* &pluginToInit, const std::string &libName, const std::string &plugName, pluginParams &params, int bSize, int sSize);
 	float* overlapBuffer = nullptr;
@@ -79,8 +77,11 @@ private:
 public:
 	Plugin::FeatureSet features;
 	std::vector<std::pair<int, float>> extractedFeatures;
-	VampPluginHost(float, int, int, float, float);
+	VampPluginHost(float sR);
+	VampPluginHost(float sR, int, int, float, float);
 	~VampPluginHost();
+	bool loadVampPlugin(Plugin* &pluginToInit, const std::string &libName, const std::string &plugName);
+	bool initializeVampPlugin(const std::string &plugName, const int bSize, const int sSize, TMap<FString, float> params, const int channels);
 	void forwardFft(int n, const float *realInput, float *complexOutput);
 	int runPlugin(string soname, string id, float *inputBuffer, int inputSize, bool runInOverlapMode, int startFrame);
 	std::vector<std::pair<int, float>> getExtractedFeatures();

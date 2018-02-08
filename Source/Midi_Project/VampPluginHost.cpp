@@ -9,62 +9,10 @@ std::vector<std::pair<int, float>> VampPluginHost::getExtractedFeatures() {
 	return extractedFeatures;
 }
 
-bool VampPluginHost::initPlugin(Plugin* &pluginToInit, const std::string &libName, const std::string &plugName, pluginParams &params, int bSize, int sSize) {
-	
-	PluginLoader::PluginKey key = loader->composePluginKey(libName, plugName);
-
-	pluginToInit = loader->loadPlugin(key, sampleRate, PluginLoader::ADAPT_ALL_SAFE);
-	
-	if (!pluginToInit) {
-		UE_LOG(LogTemp, Log, TEXT("Error loading plugin!"));
-		return false;
-	}
-	else {
-		UE_LOG(LogTemp, Log, TEXT("Plugin loaded! (%s)"), pluginToInit->getIdentifier().c_str());
-	}
-
-	params.pBlockSize = pluginToInit->getPreferredBlockSize();
-	params.pStepSize = pluginToInit->getPreferredStepSize();
-	UE_LOG(LogTemp, Log, TEXT("Preferred block size: %d"), params.pBlockSize);
-	UE_LOG(LogTemp, Log, TEXT("Preferred step size: %d"), params.pStepSize);
-
-	if (params.pBlockSize == 0) {
-		params.pBlockSize = bSize;
-	}
-	if (params.pStepSize == 0) {
-		if (pluginToInit->getInputDomain() == Plugin::FrequencyDomain) {
-			params.pStepSize = params.pBlockSize / 2;
-		}
-		else {
-			params.pStepSize = params.pBlockSize;
-		}
-	}
-	else if (params.pStepSize > params.pBlockSize) {
-		if (pluginToInit->getInputDomain() == Plugin::FrequencyDomain) {
-			params.pBlockSize = params.pStepSize * 2;
-		}
-		else {
-			params.pBlockSize = params.pStepSize;
-		}
-	}
-	//if (pluginToInit->getInputDomain() == Plugin::FrequencyDomain) {
-	//	params.pBlockSize = params.pStepSize * 2;
-	//}
-	params.pOverlapSize = params.pBlockSize - params.pStepSize;
-	params.pBlockSize = bSize;
-	params.pStepSize = sSize;
-	UE_LOG(LogTemp, Log, TEXT("Block size: %d"), params.pBlockSize);
-	UE_LOG(LogTemp, Log, TEXT("Step size: %d"), params.pStepSize);
-
-	for(auto &parameter : pluginToInit->getParameterDescriptors()) {
-		FString paramId = parameter.identifier.c_str();
-		UE_LOG(LogTemp, Log, TEXT("Parameter ID: %s ||| Default value: %f ||| Min: %f ||| Max: %f"), *paramId, parameter.defaultValue, parameter.minValue, parameter.maxValue);
-	}
-
-	return true;
-}
-
-
+VampPluginHost::VampPluginHost(float sR) : sampleRate(sR) {
+	loadVampPlugin(pluginPyin, "pyin", "yin");
+	loadVampPlugin(pluginOnsetDetector, "vamp-example-plugins", "percussiononsets");
+};
 
 VampPluginHost::VampPluginHost(float sR, int bSize, int sSize, float onsetThreshold, float onsetSensitivity)
 {
@@ -107,6 +55,61 @@ VampPluginHost::~VampPluginHost(){
 	delete debugWavFile;
 	delete pluginPyin;
 	delete pluginOnsetDetector;
+}
+
+bool VampPluginHost::initPlugin(Plugin* &pluginToInit, const std::string &libName, const std::string &plugName, pluginParams &params, int bSize, int sSize) {
+
+	PluginLoader::PluginKey key = loader->composePluginKey(libName, plugName);
+
+	pluginToInit = loader->loadPlugin(key, sampleRate, PluginLoader::ADAPT_ALL_SAFE);
+
+	if (!pluginToInit) {
+		UE_LOG(LogTemp, Log, TEXT("Error loading plugin!"));
+		return false;
+	}
+	else {
+		UE_LOG(LogTemp, Log, TEXT("Plugin loaded! (%s)"), pluginToInit->getIdentifier().c_str());
+	}
+
+	params.pBlockSize = pluginToInit->getPreferredBlockSize();
+	params.pStepSize = pluginToInit->getPreferredStepSize();
+	UE_LOG(LogTemp, Log, TEXT("Preferred block size: %d"), params.pBlockSize);
+	UE_LOG(LogTemp, Log, TEXT("Preferred step size: %d"), params.pStepSize);
+
+	if (params.pBlockSize == 0) {
+		params.pBlockSize = bSize;
+	}
+	if (params.pStepSize == 0) {
+		if (pluginToInit->getInputDomain() == Plugin::FrequencyDomain) {
+			params.pStepSize = params.pBlockSize / 2;
+		}
+		else {
+			params.pStepSize = params.pBlockSize;
+		}
+	}
+	else if (params.pStepSize > params.pBlockSize) {
+		if (pluginToInit->getInputDomain() == Plugin::FrequencyDomain) {
+			params.pBlockSize = params.pStepSize * 2;
+		}
+		else {
+			params.pBlockSize = params.pStepSize;
+		}
+	}
+	//if (pluginToInit->getInputDomain() == Plugin::FrequencyDomain) {
+	//	params.pBlockSize = params.pStepSize * 2;
+	//}
+	params.pOverlapSize = params.pBlockSize - params.pStepSize;
+	params.pBlockSize = bSize;
+	params.pStepSize = sSize;
+	UE_LOG(LogTemp, Log, TEXT("Block size: %d"), params.pBlockSize);
+	UE_LOG(LogTemp, Log, TEXT("Step size: %d"), params.pStepSize);
+
+	for (auto &parameter : pluginToInit->getParameterDescriptors()) {
+		FString paramId = parameter.identifier.c_str();
+		UE_LOG(LogTemp, Log, TEXT("Parameter ID: %s ||| Default value: %f ||| Min: %f ||| Max: %f"), *paramId, parameter.defaultValue, parameter.minValue, parameter.maxValue);
+	}
+
+	return true;
 }
 
 /* -*- c-basic-offset: 4 indent-tabs-mode: nil -*-  vi:set ts=8 sts=4 sw=4: */
@@ -285,6 +288,50 @@ int VampPluginHost::runPlugin(string soname, string id, float *inputBuffer, int 
 		}
 	}
 	return 0;
+}
+
+
+bool VampPluginHost::loadVampPlugin(Plugin* &pluginToInit, const std::string &libName, const std::string &plugName) {
+
+	PluginLoader::PluginKey key = loader->composePluginKey(libName, plugName);
+	pluginToInit = loader->loadPlugin(key, sampleRate, PluginLoader::ADAPT_ALL_SAFE);
+	if (!pluginToInit) {
+		UE_LOG(LogTemp, Log, TEXT("Error loading plugin!"));
+		return false;
+	}
+	else {
+		UE_LOG(LogTemp, Log, TEXT("Plugin loaded! (%s)"), pluginToInit->getIdentifier().c_str());
+	}
+	return true;
+}
+
+bool VampPluginHost::initializeVampPlugin(const std::string &plugName, const int bSize, const int sSize, TMap<FString, float> params, const int channels = 1) {
+	Plugin* pluginToInit = nullptr;
+	UE_LOG(LogTemp, Log, TEXT("Preferred block size: %d | Preferred step size: %d"), pluginToInit->getPreferredBlockSize(), pluginToInit->getPreferredStepSize());
+	if (plugName == "yin") {
+		pluginToInit = pluginPyin;
+		pyinParams.pBlockSize = bSize;
+		pyinParams.pStepSize = sSize;
+		pyinParams.pOverlapSize = bSize - sSize;
+	} else if(plugName == "percussiononsets") {
+		pluginToInit = pluginOnsetDetector;
+		pyinParams.pBlockSize = bSize;
+		pyinParams.pStepSize = sSize;
+		pyinParams.pOverlapSize = bSize - sSize;
+		overlapBufferSize = 2 * sSize;
+	} else {
+		UE_LOG(LogTemp, Log, TEXT("Unknown plugin name!"));
+		return false;
+	}
+	for (const auto& param : params) {
+		UE_LOG(LogTemp, Log, TEXT("Changing parameter %s with value %f for plugin %s"), *(param.Key), param.Value, plugName.c_str());
+		pluginToInit->setParameter(std::string(TCHAR_TO_UTF8(*param.Key)), param.Value);
+	}
+	if (!pluginToInit->initialise(channels, sSize, bSize)) {
+		UE_LOG(LogTemp, Log, TEXT("Error initializing %s plugin!"), plugName.c_str());
+		return false;
+	}
+	return true;
 }
 
 double VampPluginHost::toSeconds(const RealTime &time)
