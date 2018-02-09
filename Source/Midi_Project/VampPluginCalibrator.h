@@ -23,6 +23,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Calibration") TArray<float> onsetThresholdValues;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Calibration") TArray<float> yinSensitivityValues;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Calibration") TArray<float> yinThresholdValues;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Calibration") TArray<FString> testFiles;
 
 
 	UFUNCTION(BlueprintCallable, Category = "Calibration")
@@ -44,4 +45,5 @@ private:
 	int samples = 0;
 	int sampleRate = 44100;
 	std::map<std::string, std::vector<float>> testParamsToRecognizedOnsets;
+	void saveDataToFile(FString testId, std::map<std::string, std::vector<float>> testParamsToRecognizedFeatures);
 };
