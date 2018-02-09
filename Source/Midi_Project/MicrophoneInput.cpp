@@ -72,39 +72,6 @@ AMicrophoneInput::~AMicrophoneInput()
 void AMicrophoneInput::BeginPlay()
 {
 	Super::BeginPlay();
-	/*WavFileReader reader("D:\\Studia\\Praca Magisterska\\Plugin tests\\test-onset.wav", "D:\\Studia\\Praca Magisterska\\Plugin tests\\test.txt");
-	float* buff = nullptr;
-	int samplesRead = 0;
-	reader.getData(&buff, samplesRead);
-
-	if (host->runPlugin("vamp-example-plugins", "percussiononsets", buff, samplesRead, true, -1) != 0) {
-		UE_LOG(LogTemp, Log, TEXT("Failed to run percussiononsets plugin!"));
-	}
-	auto onsetFeatures = host->getExtractedFeatures();
-	if (onsetFeatures.size() > 0) {
-		for (auto onsetFeature : onsetFeatures) {
-			float onsetFrame = onsetFeature.first;
-			recognizedOnsetsToSave.push_back(onsetFrame);
-		}
-	}
-
-	bool AllowOverwriting = true;
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	FString onsetsTextToSave = "";
-	for (float const& value : recognizedOnsetsToSave) {
-		onsetsTextToSave.Append(FString::SanitizeFloat(value)).Append(LINE_TERMINATOR);
-	}
-	TCHAR* directory = TEXT("D:\\Studia\\Praca Magisterska\\Plugin tests\\");
-	if (PlatformFile.CreateDirectoryTree(directory))
-	{
-		// Get absolute file path
-		FString onsetAbsoluteFilePath = directory + FString("detected-onsets.txt");
-
-		if (AllowOverwriting || !PlatformFile.FileExists(*onsetAbsoluteFilePath))
-		{
-			FFileHelper::SaveStringToFile(onsetsTextToSave, *onsetAbsoluteFilePath);
-		}
-	}*/
 }
 
 template<typename T>
@@ -186,9 +153,11 @@ void AMicrophoneInput::Tick(float DeltaTime)
 			if (!isSilence && samples >= (unsigned)vampStepSize) {
 				/////// FREQS /////////
 				TrackFundamentalFrequency(sampleBuf, samples);
+				lastBufferWasSilence = false;
 			}
 			else {
 				fundamental_frequency = 0;
+				lastBufferWasSilence = true;
 			}
 			/////// ONSETS /////////
 			TrackPercussionOnsets(sampleBuf, samples);
@@ -209,7 +178,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 void AMicrophoneInput::TrackFundamentalFrequency(float* &sampleBuf, int samples) {
 
 	//////////////// PYIN /////////////////////
-	if (host->runPlugin("pyin", "yin", sampleBuf, samples, false, -1) != 0) {
+	if (host->runPlugin("pyin", "yin", sampleBuf, samples, lastBufferWasSilence) != 0) {
 		UE_LOG(LogTemp, Log, TEXT("Failed to run yin plugin!"));
 	}
 	auto features = host->getExtractedFeatures();

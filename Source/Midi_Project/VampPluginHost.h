@@ -69,8 +69,10 @@ private:
 	Plugin *pluginOnsetDetector;
 	double toSeconds(const RealTime &time);
 	bool initPlugin(Plugin* &pluginToInit, const std::string &libName, const std::string &plugName, pluginParams &params, int bSize, int sSize);
-	float* overlapBuffer = nullptr;
-	int overlapBufferSize;
+	float* overlapBufferOnsets = nullptr;
+	float* overlapBufferYin = nullptr;
+	int overlapBufferSizeOnsets;
+	int overlapBufferSizeYin;
 	int samplesStored = 0;
 	WavFileWritter* debugWavFile = nullptr;
 
@@ -83,6 +85,6 @@ public:
 	bool loadVampPlugin(Plugin* &pluginToInit, const std::string &libName, const std::string &plugName);
 	bool initializeVampPlugin(const std::string &plugName, const int bSize, const int sSize, TMap<FString, float> params, const int channels);
 	void forwardFft(int n, const float *realInput, float *complexOutput);
-	int runPlugin(string soname, string id, float *inputBuffer, int inputSize, bool runInOverlapMode, int startFrame);
+	int runPlugin(string soname, string id, float *inputBuffer, int inputSize, bool runInOverlapMode, int startFrame = -1);
 	std::vector<std::pair<int, float>> getExtractedFeatures();
 };

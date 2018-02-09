@@ -93,10 +93,10 @@ void AVampPluginCalibrator::saveDataToFile(FString testId, std::map<std::string,
 		FString onsetAbsoluteFilePath = directory + testId + FString("-features.txt");
 		FString shortTestResultFilePath = directory + testId + FString("-short-result.txt");
 
-		if (AllowOverwriting || !PlatformFile.FileExists(*onsetAbsoluteFilePath))
-		{
-			FFileHelper::SaveStringToFile(onsetsTextToSave, *onsetAbsoluteFilePath);
-		}
+		//if (AllowOverwriting || !PlatformFile.FileExists(*onsetAbsoluteFilePath))
+		//{
+		//	FFileHelper::SaveStringToFile(onsetsTextToSave, *onsetAbsoluteFilePath);
+		//}
 		if (AllowOverwriting || !PlatformFile.FileExists(*shortTestResultFilePath))
 		{
 			FFileHelper::SaveStringToFile(shortTestResult, *shortTestResultFilePath);

@@ -116,4 +116,5 @@ private:
 	float callibratedAMSSum = 0;
 	float callibratedVolumeSum = 0;
 	int numberOfCheckedBuffers = 0;
+	bool lastBufferWasSilence = true;
 };
