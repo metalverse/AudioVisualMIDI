@@ -61,30 +61,29 @@ struct pluginParams {
 class MIDI_PROJECT_API VampPluginHost
 {
 private:
-	float sampleRate = 44100.f;
+	Plugin::FeatureSet features;
 	pluginParams pyinParams;
 	pluginParams onsetDetectorParams;
 	PluginLoader *loader;
 	Plugin *pluginPyin;
-	Plugin *pluginOnsetDetector;
-	double toSeconds(const RealTime &time);
-	bool initPlugin(Plugin* &pluginToInit, const std::string &libName, const std::string &plugName, pluginParams &params, int bSize, int sSize);
+	Plugin *pluginOnsetDetector;	
+	float sampleRate = 44100.f;
 	float* overlapBufferOnsets = nullptr;
 	float* overlapBufferYin = nullptr;
 	int overlapBufferSizeOnsets;
 	int overlapBufferSizeYin;
 	int samplesStored = 0;
 	WavFileWritter* debugWavFile = nullptr;
+	std::vector<std::pair<int, float>> extractedFeatures;
+	bool loadVampPlugin(Plugin* &pluginToInit, const std::string &libName, const std::string &plugName);
+	void checkForFeatures(Plugin::OutputDescriptor& od, RealTime& rt, std::string& id);
+	double toSeconds(const RealTime &time);
 
 public:
-	Plugin::FeatureSet features;
-	std::vector<std::pair<int, float>> extractedFeatures;
 	VampPluginHost(float sR);
-	VampPluginHost(float sR, int, int, float, float);
 	~VampPluginHost();
-	bool loadVampPlugin(Plugin* &pluginToInit, const std::string &libName, const std::string &plugName);
 	bool initializeVampPlugin(const std::string &plugName, const int bSize, const int sSize, TMap<FString, float> params, const int channels);
-	void forwardFft(int n, const float *realInput, float *complexOutput);
 	int runPlugin(string soname, string id, float *inputBuffer, int inputSize, bool runInOverlapMode, int startFrame = -1);
+	void forwardFft(int n, const float *realInput, float *complexOutput);
 	std::vector<std::pair<int, float>> getExtractedFeatures();
 };

@@ -59,7 +59,7 @@ public class Midi_Project : ModuleRules
             Console.WriteLine("... LibrariesPath -> " + LibrariesPath);
 
 
-            PublicAdditionalLibraries.Add(Path.Combine(LibrariesPath, "vamp-example-plugins_" + PlatformString + ".lib"));
+            //PublicAdditionalLibraries.Add(Path.Combine(LibrariesPath, "vamp-example-plugins_" + PlatformString + ".lib"));
         }
 
         if (isLibrarySupported)

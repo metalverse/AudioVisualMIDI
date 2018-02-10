@@ -66,10 +66,10 @@ WavFileReader::WavFileReader(const char* fileName, const char* fileToSave)
 		fread(&value[i], sample_size, 1, fin);
 		dataBuff[i] = (float)(value[i]) / maxAmplitude;
 	}
-	WavFileWritter writter(std::string(fileName) + "2");
-	writter.writeHeader(header.sampleRate, header.numChannels);
-	writter.writeData(dataBuff, samplesCount);
-	writter.closeFile();
+	//WavFileWritter writter(std::string(fileName) + "2");
+	//writter.writeHeader(header.sampleRate, header.numChannels);
+	//writter.writeData(dataBuff, samplesCount);
+	//writter.closeFile();
 	//Write data into the file
 	//FILE *fout = fopen(fileToSave, "w");
 	//for (int i = 0; i < samples_count; i++)

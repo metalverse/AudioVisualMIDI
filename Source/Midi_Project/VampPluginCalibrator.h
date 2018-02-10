@@ -21,9 +21,10 @@ class MIDI_PROJECT_API AVampPluginCalibrator : public AActor
 public:	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Calibration") TArray<float> onsetSensitivityValues;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Calibration") TArray<float> onsetThresholdValues;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Calibration") TArray<float> yinSensitivityValues;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Calibration") TArray<float> yinOutputunvoicedValues;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Calibration") TArray<float> yinThresholdValues;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Calibration") TArray<FString> testFiles;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Calibration") TArray<FString> onsetTestFiles;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Calibration") TArray<FString> yinTestFiles;
 
 
 	UFUNCTION(BlueprintCallable, Category = "Calibration")
@@ -45,5 +46,7 @@ private:
 	int samples = 0;
 	int sampleRate = 44100;
 	std::map<std::string, std::vector<float>> testParamsToRecognizedOnsets;
-	void saveDataToFile(FString testId, std::map<std::string, std::vector<float>> testParamsToRecognizedFeatures);
+	std::map<std::string, std::vector<float>> testParamsToRecognizedFreqs;
+	void saveOnsetDataToFile(FString testId, std::map<std::string, std::vector<float>> testParamsToRecognizedFeatures);
+	void saveYinDataToFile(FString testId, std::map<std::string, std::vector<float>> testParamsToRecognizedFreqs);
 };

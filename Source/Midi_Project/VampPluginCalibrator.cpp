@@ -26,7 +26,7 @@ void AVampPluginCalibrator::Tick( float DeltaTime )
 }
 
 void AVampPluginCalibrator::RunOnsetDetectorTests() {
-	for (const auto& file : testFiles) {
+	for (const auto& file : onsetTestFiles) {
 		LoadAudioDataFromWavFile(file);
 		if (audioBuffer == nullptr || samples == 0) {
 			UE_LOG(LogTemp, Log, TEXT("Calibration: NO DATA!"));
@@ -40,7 +40,7 @@ void AVampPluginCalibrator::RunOnsetDetectorTests() {
 				params.Add("sensitivity", sensitivity);
 				host->initializeVampPlugin("percussiononsets", 1024, 512, params, 1);
 				UE_LOG(LogTemp, Log, TEXT("Calibration: Running test with %d samples"), samples);
-				if (host->runPlugin("vamp-example-plugins", "percussiononsets", audioBuffer, samples, true, -1) != 0) {
+				if (host->runPlugin("vamp-example-plugins", "percussiononsets", audioBuffer, samples, false) != 0) {
 					UE_LOG(LogTemp, Log, TEXT("Calibration: Failed to run percussiononsets plugin!"));
 				}
 				else {
@@ -59,12 +59,46 @@ void AVampPluginCalibrator::RunOnsetDetectorTests() {
 				}
 			}
 		}
-		saveDataToFile(file, testParamsToRecognizedOnsets);
+		saveOnsetDataToFile(file, testParamsToRecognizedOnsets);
 	}
 }
 
 void AVampPluginCalibrator::RunYinTests() {
-
+	for (const auto& file : yinTestFiles) {
+		LoadAudioDataFromWavFile(file);
+		if (audioBuffer == nullptr || samples == 0) {
+			UE_LOG(LogTemp, Log, TEXT("Calibration: NO DATA!"));
+			return;
+		}
+		testParamsToRecognizedFreqs.clear();
+		for (const auto& threshold : yinThresholdValues) {
+			TMap<FString, float> params;
+			params.Add("yinThreshold", threshold);
+			for (const auto& outputunvoiced : yinOutputunvoicedValues) {
+				params.Add("outputunvoiced", outputunvoiced);
+				host->initializeVampPlugin("yin", 2048, 512, params, 1);
+				UE_LOG(LogTemp, Log, TEXT("Calibration: Running test with %d samples"), samples);
+				if (host->runPlugin("pyin", "yin", audioBuffer, samples, false) != 0) {
+					UE_LOG(LogTemp, Log, TEXT("Calibration: Failed to run yin plugin!"));
+				}
+				else {
+					std::vector<float> recognizedFreqs;
+					auto yinFeatures = host->getExtractedFeatures();
+					if (yinFeatures.size() > 0) {
+						for (auto yinFeature : yinFeatures) {
+							float yinFreq = yinFeature.second;
+							recognizedFreqs.push_back(yinFreq);
+						}
+					}
+					std::string testDescription = std::to_string(threshold) + ";" + std::to_string(outputunvoiced) + ";";
+					UE_LOG(LogTemp, Log, TEXT("Calibration: step finished: %s"), *(FString(testDescription.c_str())));
+					testParamsToRecognizedFreqs.insert(std::make_pair(testDescription, recognizedFreqs));
+					UE_LOG(LogTemp, Log, TEXT("Recognized freqs size: %d"), recognizedFreqs.size());
+				}
+			}
+		}
+		saveYinDataToFile(file, testParamsToRecognizedFreqs);
+	}
 }
 
 void AVampPluginCalibrator::LoadAudioDataFromWavFile(FString wavFilename) {
@@ -73,7 +107,7 @@ void AVampPluginCalibrator::LoadAudioDataFromWavFile(FString wavFilename) {
 	reader.getData(&audioBuffer, samples);
 }
 
-void AVampPluginCalibrator::saveDataToFile(FString testId, std::map<std::string, std::vector<float>> testParamsToRecognizedFeatures) {
+void AVampPluginCalibrator::saveOnsetDataToFile(FString testId, std::map<std::string, std::vector<float>> testParamsToRecognizedFeatures) {
 	bool AllowOverwriting = true;
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 	FString onsetsTextToSave = "";
@@ -100,6 +134,33 @@ void AVampPluginCalibrator::saveDataToFile(FString testId, std::map<std::string,
 		if (AllowOverwriting || !PlatformFile.FileExists(*shortTestResultFilePath))
 		{
 			FFileHelper::SaveStringToFile(shortTestResult, *shortTestResultFilePath);
+		}
+	}
+}
+
+void AVampPluginCalibrator::saveYinDataToFile(FString testId, std::map<std::string, std::vector<float>> testParamsToRecognizedFreqs) {
+	bool AllowOverwriting = true;
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	FString freqsTextToSave = "";
+	TCHAR* directory = TEXT("D:\\Studia\\Praca Magisterska\\Plugin tests\\DetectedFeatures\\");
+	int testNbr = 0;
+	for (auto const& test : testParamsToRecognizedFreqs) {
+		freqsTextToSave = "";
+		freqsTextToSave.Append(UTF8_TO_TCHAR(test.first.c_str())).Append(LINE_TERMINATOR);
+		for (auto const& value : test.second) {
+			freqsTextToSave.Append(FString::SanitizeFloat(value)).Append(";").Append(LINE_TERMINATOR);
+		}
+		///////////////////
+		if (PlatformFile.CreateDirectoryTree(directory))
+		{
+			// Get absolute file path
+			FString onsetAbsoluteFilePath = directory + testId + FString("_") + FString::FromInt(testNbr) + FString("-features.txt");
+			testNbr++;
+			if (AllowOverwriting || !PlatformFile.FileExists(*onsetAbsoluteFilePath))
+			{
+				FFileHelper::SaveStringToFile(freqsTextToSave, *onsetAbsoluteFilePath);
+			}
+
 		}
 	}
 }

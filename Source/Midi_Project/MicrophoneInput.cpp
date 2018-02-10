@@ -46,7 +46,18 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 			UE_LOG(LogTemp, Log, TEXT("VoiceCapture started."));
 		}
 	}
-	host = new VampPluginHost(sampleRate, vampBlockSize, vampStepSize, onsetParamThreshold, onsetParamSensitivity);
+	
+	host = new VampPluginHost(sampleRate);// , vampBlockSize, vampStepSize, onsetParamThreshold, onsetParamSensitivity);
+	TMap<FString, float> yinParams;
+	yinParams.Add("yinThreshold", 0.15f);
+	yinParams.Add("outputunvoiced", 0.f);
+	host->initializeVampPlugin("yin", 2048, 512, yinParams, (int)channels);
+	TMap<FString, float> onsetParams;
+	onsetParams.Add("threshold", 5.0f);
+	onsetParams.Add("sensitivity", 50.0f);
+	host->initializeVampPlugin("percussiononsets", 1024, 512, onsetParams, (int)channels);
+
+
 	tracker = ObjectInitializer.CreateDefaultSubobject<USimplePitchTracker>(this, TEXT("MyPitchTracker"));
 	tempoDetector = MakeShareable(new TempoDetector(sampleRate, sampleRate * 3, sampleRate * 8));
 
@@ -178,7 +189,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 void AMicrophoneInput::TrackFundamentalFrequency(float* &sampleBuf, int samples) {
 
 	//////////////// PYIN /////////////////////
-	if (host->runPlugin("pyin", "yin", sampleBuf, samples, lastBufferWasSilence) != 0) {
+	if (host->runPlugin("pyin", "yin", sampleBuf, samples, (!lastBufferWasSilence)) != 0) {
 		UE_LOG(LogTemp, Log, TEXT("Failed to run yin plugin!"));
 	}
 	auto features = host->getExtractedFeatures();
