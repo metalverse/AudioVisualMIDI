@@ -4,7 +4,7 @@
 
 #include "GameFramework/Actor.h"
 #include "Voice.h"
-#include "OnlineSubsystemUtils.h"
+//#include "OnlineSubsystemUtils.h"
 #include <cmath>
 #include <vector>
 #include "CoreMisc.h"
@@ -117,4 +117,7 @@ private:
 	float callibratedVolumeSum = 0;
 	int numberOfCheckedBuffers = 0;
 	bool lastBufferWasSilence = true;
+	void correctVolumeByRecognizedFrequency(float frequency);
+	void initWeighteningCurveValues();
+	vector<std::pair<int, float>> aWeighteningCurveValues;
 };

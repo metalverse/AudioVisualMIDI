@@ -6,6 +6,8 @@
 #include "SoundComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FEventSound, int, mode, int, value, int, pitchId, float, volume);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEventPaintFloor, bool, isActive);
+
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent), meta = (DisplayName = "SoundComponent"))
 class MIDI_PROJECT_API USoundComponent : public UActorComponent
@@ -24,8 +26,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Sound")
 		void callSoundEvent(int mode, int value, int pitchId, float volume);
+	UFUNCTION(BlueprintCallable, Category = "Sound")
+		void callPainFloorEvent(bool isActive);
 
 protected:
 	UPROPERTY(BlueprintAssignable, Category = "Sound")
 		FEventSound OnEventSoundDetected;
+	UPROPERTY(BlueprintAssignable, Category = "Sound")
+		FEventPaintFloor OnEventPaintFloor;
 };

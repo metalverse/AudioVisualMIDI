@@ -50,13 +50,13 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 	host = new VampPluginHost(sampleRate);// , vampBlockSize, vampStepSize, onsetParamThreshold, onsetParamSensitivity);
 	TMap<FString, float> yinParams;
 	yinParams.Add("yinThreshold", 0.15f);
-	yinParams.Add("outputunvoiced", 0.f);
+	yinParams.Add("outputunvoiced", 2.f);
 	host->initializeVampPlugin("yin", 2048, 512, yinParams, (int)channels);
 	TMap<FString, float> onsetParams;
 	onsetParams.Add("threshold", 5.0f);
-	onsetParams.Add("sensitivity", 50.0f);
+	onsetParams.Add("sensitivity", 60.0f);
 	host->initializeVampPlugin("percussiononsets", 1024, 512, onsetParams, (int)channels);
-
+	initWeighteningCurveValues();
 
 	tracker = ObjectInitializer.CreateDefaultSubobject<USimplePitchTracker>(this, TEXT("MyPitchTracker"));
 	tempoDetector = MakeShareable(new TempoDetector(sampleRate, sampleRate * 3, sampleRate * 8));
@@ -118,7 +118,7 @@ bool AMicrophoneInput::NormalizeDataAndCheckForSilence(T* inBuff, uint8* inBuff8
 		if (outBuf[i] > maxSoundValue) maxSoundValue = outBuf[i];
 		totalSquare += sample * sample;
 	}
-	
+
 	float meanSquare = 2 * totalSquare / samples;
 	float rms = FMath::Sqrt(meanSquare);
 	float amplitude = rms / 32768.0f;
@@ -188,8 +188,8 @@ void AMicrophoneInput::Tick(float DeltaTime)
 
 void AMicrophoneInput::TrackFundamentalFrequency(float* &sampleBuf, int samples) {
 
-	//////////////// PYIN /////////////////////
-	if (host->runPlugin("pyin", "yin", sampleBuf, samples, (!lastBufferWasSilence)) != 0) {
+	//////////////// YIN /////////////////////
+	if (host->runPlugin("yin", sampleBuf, samples, (!lastBufferWasSilence)) != 0) {
 		UE_LOG(LogTemp, Log, TEXT("Failed to run yin plugin!"));
 	}
 	auto features = host->getExtractedFeatures();
@@ -240,6 +240,7 @@ void AMicrophoneInput::TrackFundamentalFrequency(float* &sampleBuf, int samples)
 			}
 		}
 	}
+	if(fundamental_frequency > 0) correctVolumeByRecognizedFrequency(fundamental_frequency);
 	else {
 		fundamental_frequency = 0;
 		UE_LOG(LogTemp, Log, TEXT("Features empty"));
@@ -248,7 +249,7 @@ void AMicrophoneInput::TrackFundamentalFrequency(float* &sampleBuf, int samples)
 
 void AMicrophoneInput::TrackPercussionOnsets(float* &sampleBuf, int samples) {
 	//////////////// ONSET DETECTOR /////////////////////
-	if (host->runPlugin("vamp-example-plugins", "percussiononsets", sampleBuf, samples, true, numberOfSamplesTracked - 1) != 0) {
+	if (host->runPlugin("percussiononsets", sampleBuf, samples, true, numberOfSamplesTracked - 1) != 0) {
 		UE_LOG(LogTemp, Log, TEXT("Failed to run percussiononsets plugin!"));
 	}
 	newTempoTracked = false;
@@ -395,3 +396,24 @@ void AMicrophoneInput::SetDetectorMidiTempo(float tempo) {
 	tempoDetector->setCurrentMidiTempo(tempo);
 }
 
+void AMicrophoneInput::initWeighteningCurveValues() {
+	const int freqs[] = { 40,50,63,80,100,125,160,200,250,315,400,500,650,800,1000,1250,1600,2000,2500,3150,4000 };
+	const float values[] = { 34.6,30.2,26.2,22.5,19.1,16.1,13.4,10.9,8.6,6.6,4.8,3.2,1.9,0.8,0,-0.6,-1,-1.2,-1.3,-1.2,-1 };
+	for (int i = 0; i < 21; ++i) {
+		aWeighteningCurveValues.push_back(std::make_pair(freqs[i], values[i]));
+	}
+}
+
+void AMicrophoneInput::correctVolumeByRecognizedFrequency(float frequency) {
+	std::pair<int, float> previous;
+	previous = std::make_pair(31, 39.3f);
+	for (const auto& point : aWeighteningCurveValues) {
+		if (frequency < point.first && frequency > previous.first) {
+			float value = ((frequency - previous.first) / (point.first - previous.first) * (point.second - previous.second) + previous.second);
+			UE_LOG(LogTemp, Log, TEXT("Freq: %f, increasing volume: %f"), frequency, value);
+			volumedB += value;
+			return;
+		}
+		previous = point;
+	}
+}

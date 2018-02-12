@@ -37,3 +37,7 @@ void USoundComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 void USoundComponent::callSoundEvent(int mode, int value, int pitchId, float volume) {
 	OnEventSoundDetected.Broadcast(mode, value, pitchId, volume);
 }
+
+void USoundComponent::callPainFloorEvent(bool isActive) {
+	OnEventPaintFloor.Broadcast(isActive);
+}

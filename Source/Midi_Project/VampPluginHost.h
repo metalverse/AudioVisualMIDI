@@ -9,18 +9,15 @@
 #include <iostream>
 #include <fstream>
 #include <set>
-
-#include "tools/kiss_fftnd.h"
-//#include <vamp-hostsdk/sndfile.h>
-
+#include <cmath>
 #include <cstring>
 #include <cstdlib>
 
+#include "tools/kiss_fftnd.h"
+//#include <vamp-hostsdk/sndfile.h>
 #include "vamp-hostsdk/system.h"
 
-#include <cmath>
-
-#include "WavFileWritter.h"
+//#include "WavFileWritter.h"
 
 using namespace std;
 
@@ -45,45 +42,39 @@ using Vamp::HostExt::PluginInputDomainAdapter;
 
 //#endif  /* NOMINMAX */
 
-enum Verbosity {
-	PluginIds,
-	PluginOutputIds,
-	PluginInformation,
-	PluginInformationDetailed
-};
+//enum Verbosity {
+//	PluginIds,
+//	PluginOutputIds,
+//	PluginInformation,
+//	PluginInformationDetailed
+//};
 
-struct pluginParams {
+struct PluginConfig {
 	int pBlockSize;
 	int pStepSize;
-	int pOverlapSize;
+	int pBufferOverlapSize;
 };
 
 class MIDI_PROJECT_API VampPluginHost
 {
 private:
 	Plugin::FeatureSet features;
-	pluginParams pyinParams;
-	pluginParams onsetDetectorParams;
 	PluginLoader *loader;
-	Plugin *pluginPyin;
-	Plugin *pluginOnsetDetector;	
+	std::map<std::string, Plugin*> plugins;
+	std::map<std::string, PluginConfig> pluginsConfig;
+	std::map<std::string, float*> overlapBuffers;
 	float sampleRate = 44100.f;
-	float* overlapBufferOnsets = nullptr;
-	float* overlapBufferYin = nullptr;
-	int overlapBufferSizeOnsets;
-	int overlapBufferSizeYin;
-	int samplesStored = 0;
-	WavFileWritter* debugWavFile = nullptr;
+	//WavFileWritter* debugWavFile = nullptr;
 	std::vector<std::pair<int, float>> extractedFeatures;
-	bool loadVampPlugin(Plugin* &pluginToInit, const std::string &libName, const std::string &plugName);
-	void checkForFeatures(Plugin::OutputDescriptor& od, RealTime& rt, std::string& id);
+	bool loadVampPlugin(const std::string &libName, const std::string &plugName);
+	void checkForFeatures(Plugin::OutputDescriptor& od, RealTime& rt, const std::string& pluginId);
 	double toSeconds(const RealTime &time);
 
 public:
-	VampPluginHost(float sR);
+	VampPluginHost(const float sampleRate);
 	~VampPluginHost();
-	bool initializeVampPlugin(const std::string &plugName, const int bSize, const int sSize, TMap<FString, float> params, const int channels);
-	int runPlugin(string soname, string id, float *inputBuffer, int inputSize, bool runInOverlapMode, int startFrame = -1);
-	void forwardFft(int n, const float *realInput, float *complexOutput);
+	bool initializeVampPlugin(const std::string &pluginId, const int blockSize, const int stepSize, TMap<FString, float>& params, const int channels);
+	int runPlugin(const std::string& pluginId, float *inputBuffer, const int inputSize, bool runInOverlapMode, int startFrame = -1);
+	void forwardFft(const int n, const float *realInput, float *complexOutput);
 	std::vector<std::pair<int, float>> getExtractedFeatures();
 };

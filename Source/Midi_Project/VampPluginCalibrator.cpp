@@ -40,7 +40,7 @@ void AVampPluginCalibrator::RunOnsetDetectorTests() {
 				params.Add("sensitivity", sensitivity);
 				host->initializeVampPlugin("percussiononsets", 1024, 512, params, 1);
 				UE_LOG(LogTemp, Log, TEXT("Calibration: Running test with %d samples"), samples);
-				if (host->runPlugin("vamp-example-plugins", "percussiononsets", audioBuffer, samples, false) != 0) {
+				if (host->runPlugin("percussiononsets", audioBuffer, samples, false) != 0) {
 					UE_LOG(LogTemp, Log, TEXT("Calibration: Failed to run percussiononsets plugin!"));
 				}
 				else {
@@ -78,7 +78,7 @@ void AVampPluginCalibrator::RunYinTests() {
 				params.Add("outputunvoiced", outputunvoiced);
 				host->initializeVampPlugin("yin", 2048, 512, params, 1);
 				UE_LOG(LogTemp, Log, TEXT("Calibration: Running test with %d samples"), samples);
-				if (host->runPlugin("pyin", "yin", audioBuffer, samples, false) != 0) {
+				if (host->runPlugin("yin", audioBuffer, samples, false) != 0) {
 					UE_LOG(LogTemp, Log, TEXT("Calibration: Failed to run yin plugin!"));
 				}
 				else {
