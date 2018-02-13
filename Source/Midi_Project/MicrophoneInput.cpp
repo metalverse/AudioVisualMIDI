@@ -165,8 +165,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 				/////// FREQS /////////
 				TrackFundamentalFrequency(sampleBuf, samples);
 				lastBufferWasSilence = false;
-			}
-			else {
+			} else {
 				fundamental_frequency = 0;
 				lastBufferWasSilence = true;
 			}

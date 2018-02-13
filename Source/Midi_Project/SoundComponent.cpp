@@ -38,6 +38,10 @@ void USoundComponent::callSoundEvent(int mode, int value, int pitchId, float vol
 	OnEventSoundDetected.Broadcast(mode, value, pitchId, volume);
 }
 
+void USoundComponent::callMidiEvent(int channel, int noteId, int timeDifference, int type) {
+	OnEventMidiToPlay.Broadcast(channel, noteId, timeDifference, type);
+}
+
 void USoundComponent::callPainFloorEvent(bool isActive) {
 	OnEventPaintFloor.Broadcast(isActive);
 }
