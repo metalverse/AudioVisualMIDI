@@ -6,9 +6,9 @@
 #include "SoundComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FEventSound, int, mode, int, value, int, pitchId, float, volume);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FEventMidi, int, channel, int, noteId, int, timeDifference, int, type);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FEventPlayMidi, int, channel, int, noteId, int, timeDifference, int, type);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEventPaintFloor, bool, isActive);
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEventWallInteraction, bool, isActive, int, noteId);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent), meta = (DisplayName = "SoundComponent"))
 class MIDI_PROJECT_API USoundComponent : public UActorComponent
@@ -31,12 +31,16 @@ public:
 		void callMidiEvent(int channel, int noteId, int timeDifference, int type);
 	UFUNCTION(BlueprintCallable, Category = "Sound")
 		void callPainFloorEvent(bool isActive);
+	UFUNCTION(BlueprintCallable, Category = "Sound")
+		void callWallIneraction(bool isActive, int noteId);
 
 protected:
 	UPROPERTY(BlueprintAssignable, Category = "Sound")
 		FEventSound OnEventSoundDetected;
 	UPROPERTY(BlueprintAssignable, Category = "Sound")
-		FEventMidi OnEventMidiToPlay;
+		FEventPlayMidi OnEventMidiToPlay;
 	UPROPERTY(BlueprintAssignable, Category = "Sound")
 		FEventPaintFloor OnEventPaintFloor;
+	UPROPERTY(BlueprintAssignable, Category = "Sound")
+		FEventWallInteraction OnEventWallInteraction;
 };

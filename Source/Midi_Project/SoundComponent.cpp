@@ -45,3 +45,7 @@ void USoundComponent::callMidiEvent(int channel, int noteId, int timeDifference,
 void USoundComponent::callPainFloorEvent(bool isActive) {
 	OnEventPaintFloor.Broadcast(isActive);
 }
+
+void USoundComponent::callWallIneraction(bool isActive, int noteId) {
+	OnEventWallInteraction.Broadcast(isActive, noteId);
+}
