@@ -161,6 +161,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		isSilence = NormalizeDataAndCheckForSilence((int16*)buf, buf, readBytes, sampleBuf, samples, volumedB, volumeAmplitude);
 
 		if (!isInCallibrationMode) {
+			currentNoiseFactor = 0;
 			if (!isSilence && samples >= (unsigned)vampStepSize) {
 				/////// FREQS /////////
 				TrackFundamentalFrequency(sampleBuf, samples);
@@ -193,7 +194,6 @@ void AMicrophoneInput::TrackFundamentalFrequency(float* &sampleBuf, int samples)
 	}
 	auto features = host->getExtractedFeatures();
 	///////////////////////////////////////////
-
 	if (features.size() > 0) {
 		if (isRecordingRecognizedFeatures) {
 			for (auto feature : features) {
@@ -237,6 +237,14 @@ void AMicrophoneInput::TrackFundamentalFrequency(float* &sampleBuf, int samples)
 					bufferedMidiNotesOccurences.Add(1);
 				}
 			}
+		} else {
+			float noiseOccurences = 0;
+			for (const auto& feature : features) {
+				if (feature.second < 0) {
+					noiseOccurences += 1;
+				}
+			}
+			currentNoiseFactor = noiseOccurences / features.size();
 		}
 	}
 	if(fundamental_frequency > 0) correctVolumeByRecognizedFrequency(fundamental_frequency);

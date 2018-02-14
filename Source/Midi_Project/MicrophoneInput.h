@@ -45,6 +45,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") bool newTempoTracked = false;
 	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float trackedTempoInBpm = 120;
 	UPROPERTY(Instanced, EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") USimplePitchTracker* tracker;
+	UPROPERTY(BlueprintReadWrite, Category = "SoundParameters") float currentNoiseFactor = 0;
 
 	TSharedPtr<class IVoiceCapture> voiceCapture;
 	//TSharedPtr<class VampPluginHost> vampHost;
