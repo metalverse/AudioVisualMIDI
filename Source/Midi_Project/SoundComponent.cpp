@@ -46,6 +46,6 @@ void USoundComponent::callPainFloorEvent(bool isActive) {
 	OnEventPaintFloor.Broadcast(isActive);
 }
 
-void USoundComponent::callWallIneraction(bool isActive, int noteId) {
-	OnEventWallInteraction.Broadcast(isActive, noteId);
+void USoundComponent::callWallIneraction(bool isActive, int mode, int noteId) {
+	OnEventWallInteraction.Broadcast(isActive, mode, noteId);
 }

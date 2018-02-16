@@ -53,8 +53,8 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 	yinParams.Add("outputunvoiced", 2.f);
 	host->initializeVampPlugin("yin", 2048, 512, yinParams, (int)channels);
 	TMap<FString, float> onsetParams;
-	onsetParams.Add("threshold", 5.0f);
-	onsetParams.Add("sensitivity", 60.0f);
+	onsetParams.Add("threshold", 4.0f);
+	onsetParams.Add("sensitivity", 55.0f);
 	host->initializeVampPlugin("percussiononsets", 1024, 512, onsetParams, (int)channels);
 	initWeighteningCurveValues();
 
