@@ -50,11 +50,11 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 	host = new VampPluginHost(sampleRate);// , vampBlockSize, vampStepSize, onsetParamThreshold, onsetParamSensitivity);
 	TMap<FString, float> yinParams;
 	yinParams.Add("yinThreshold", 0.15f);
-	yinParams.Add("outputunvoiced", 2.f);
+	yinParams.Add("outputunvoiced", 1.f);
 	host->initializeVampPlugin("yin", 2048, 512, yinParams, (int)channels);
 	TMap<FString, float> onsetParams;
 	onsetParams.Add("threshold", 4.0f);
-	onsetParams.Add("sensitivity", 55.0f);
+	onsetParams.Add("sensitivity", 57.0f);
 	host->initializeVampPlugin("percussiononsets", 1024, 512, onsetParams, (int)channels);
 	initWeighteningCurveValues();
 
@@ -171,7 +171,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 				lastBufferWasSilence = true;
 			}
 			/////// ONSETS /////////
-			TrackPercussionOnsets(sampleBuf, samples);
+			TrackPercussionOnsets(sampleBuf, samples, isSilence);
 			if (isSavingAudioInput) {
 				UE_LOG(LogTemp, Log, TEXT("ONSET Number of samples tracked from: %d to %d "), numberOfSamplesTracked, numberOfSamplesTracked + samples);
 				numberOfSamplesTracked += samples;
@@ -254,18 +254,18 @@ void AMicrophoneInput::TrackFundamentalFrequency(float* &sampleBuf, int samples)
 	}
 }
 
-void AMicrophoneInput::TrackPercussionOnsets(float* &sampleBuf, int samples) {
+void AMicrophoneInput::TrackPercussionOnsets(float* &sampleBuf, int samples, bool isSilence) {
 	//////////////// ONSET DETECTOR /////////////////////
 	if (host->runPlugin("percussiononsets", sampleBuf, samples, true, numberOfSamplesTracked - 1) != 0) {
 		UE_LOG(LogTemp, Log, TEXT("Failed to run percussiononsets plugin!"));
 	}
 	newTempoTracked = false;
 	auto onsetFeatures = host->getExtractedFeatures();
-	if (onsetFeatures.size() > 0) {
+	if (onsetFeatures.size() > 0 && !isSilence) {
 
 		for (auto onsetFeature : onsetFeatures) {
 			//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::FromInt(numberOfSamplesTracked + samples).Append(" SAMPLES"));
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::FromInt(numberOfSamplesTracked + onsetFeature.first).Append(" SAMPLE IS ONSET"));
+//			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Silver, FString::FromInt(numberOfSamplesTracked + onsetFeature.first).Append(" SAMPLE IS ONSET"));
 			UE_LOG(LogTemp, Log, TEXT("ONSET Detected onset sample: %d, sound volume: %f"), numberOfSamplesTracked + onsetFeature.first, maxSoundValue);
 			if (!newTempoTracked) {
 				if (tempoDetector->update(true, samples, onsetFeature.first)) {

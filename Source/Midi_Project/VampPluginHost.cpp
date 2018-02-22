@@ -46,6 +46,11 @@ bool VampPluginHost::loadVampPlugin(const std::string &libName, const std::strin
 		UE_LOG(LogTemp, Log, TEXT("Plugin loaded! (%s)"), *id);
 	}
 	plugins.insert(std::make_pair(plugName, newPlugin));
+	for (auto desc : newPlugin->getParameterDescriptors()) {
+		FString paramDesc = desc.description.c_str();
+		float defVal = desc.defaultValue;
+		UE_LOG(LogTemp, Log, TEXT("Param for plugin: (%s): defVal: %f"), *paramDesc, defVal);
+	}
 	return true;
 }
 
@@ -88,13 +93,13 @@ int VampPluginHost::runPlugin(const std::string& id, float *inputBuffer, int inp
 	Plugin* runningPlugin;
 	PluginConfig config;
 	FString pluginId = id.c_str();
-	try {
+	//try {
 		runningPlugin = plugins.at(id);
 		config = pluginsConfig.at(id);
-	} catch (const std::out_of_range e) {
+	/*} catch (const std::out_of_range e) {
 		UE_LOG(LogTemp, Log, TEXT("No plugin loaded with ID: %s"), *pluginId);
 		return -1;
-	}
+	}*/
 
 	UE_LOG(LogTemp, Log, TEXT("In plugin, size: %d"), inputSize);
 	float* processBuffer = nullptr;
