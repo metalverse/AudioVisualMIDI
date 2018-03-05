@@ -23,8 +23,8 @@ class MIDI_PROJECT_API AMicrophoneInput : public AActor
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") float onsetParamThreshold = 3.0f; //default value
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") float onsetParamSensitivity = 40.0f; //default value
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") float onsetParamThreshold;// = 4.0f; //default value
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SoundParameters") float onsetParamSensitivity;// = 57.0f; //default value
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") float volumedB;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") float volumeAmplitude;
 	UPROPERTY(BlueprintReadOnly, Category = "SoundParameters") bool isInCallibrationMode;
@@ -84,6 +84,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
 		void StopSavingAudioInput();
+
+	UFUNCTION(BlueprintCallable, Category = "MicrophoneInput")
+		void InitVampPlugins();
 
 	UFUNCTION(BlueprintCallable, Category = "Callibration")
 		void StartCallibration();

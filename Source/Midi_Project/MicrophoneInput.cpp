@@ -46,16 +46,7 @@ AMicrophoneInput::AMicrophoneInput(const FObjectInitializer& ObjectInitializer)
 			UE_LOG(LogTemp, Log, TEXT("VoiceCapture started."));
 		}
 	}
-	
-	host = new VampPluginHost(sampleRate);// , vampBlockSize, vampStepSize, onsetParamThreshold, onsetParamSensitivity);
-	TMap<FString, float> yinParams;
-	yinParams.Add("yinThreshold", 0.15f);
-	yinParams.Add("outputunvoiced", 1.f);
-	host->initializeVampPlugin("yin", 2048, 512, yinParams, (int)channels);
-	TMap<FString, float> onsetParams;
-	onsetParams.Add("threshold", 4.0f);
-	onsetParams.Add("sensitivity", 57.0f);
-	host->initializeVampPlugin("percussiononsets", 1024, 512, onsetParams, (int)channels);
+
 	initWeighteningCurveValues();
 
 	tracker = ObjectInitializer.CreateDefaultSubobject<USimplePitchTracker>(this, TEXT("MyPitchTracker"));
@@ -401,6 +392,18 @@ float AMicrophoneInput::GetNoiseLevelByCallibration() {
 
 void AMicrophoneInput::SetDetectorMidiTempo(float tempo) {
 	tempoDetector->setCurrentMidiTempo(tempo);
+}
+
+void AMicrophoneInput::InitVampPlugins() {
+	host = new VampPluginHost(sampleRate);// , vampBlockSize, vampStepSize, onsetParamThreshold, onsetParamSensitivity);
+	TMap<FString, float> yinParams;
+	yinParams.Add("yinThreshold", 0.15f);
+	yinParams.Add("outputunvoiced", 1.f);
+	host->initializeVampPlugin("yin", 2048, 512, yinParams, (int)channels);
+	TMap<FString, float> onsetParams;
+	onsetParams.Add("threshold", onsetParamThreshold);
+	onsetParams.Add("sensitivity", onsetParamSensitivity);
+	host->initializeVampPlugin("percussiononsets", 1024, 512, onsetParams, (int)channels);
 }
 
 void AMicrophoneInput::initWeighteningCurveValues() {
