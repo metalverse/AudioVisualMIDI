@@ -136,7 +136,7 @@ void AMicrophoneInput::Tick(float DeltaTime)
 	}
 	FString bufforStatus = EVoiceCaptureState::ToString(captureState);
 	//UE_LOG(LogTemp, Log, TEXT("Bytes available: %d"), (int)bytesAvailable);
-
+	prepareForTempoChange = false;
 	if (captureState == EVoiceCaptureState::Ok && bytesAvailable >= 0)
 	{
 		isWaitingForData = false;
@@ -146,6 +146,11 @@ void AMicrophoneInput::Tick(float DeltaTime)
 		uint32 readBytes = 0;
 		voiceCapture->GetVoiceData(buf, maxBytes, readBytes);
 		uint32 samples = readBytes / 2;
+
+		if (isMicrophoneMuted) {
+			lastBufferWasSilence = true;
+			return;
+		}
 
 		UE_LOG(LogTemp, Log, TEXT("New samples: %d"), samples);
 		float* sampleBuf = new float[samples];
@@ -265,6 +270,8 @@ void AMicrophoneInput::TrackPercussionOnsets(float* &sampleBuf, int samples, boo
 					if (tmpTempo > 0) {
 						trackedTempoInBpm = tmpTempo;
 						newTempoTracked = true;
+					} else if(tmpTempo == -3.f) {
+						prepareForTempoChange = true;
 					}
 				}
 			}
@@ -426,4 +433,8 @@ void AMicrophoneInput::correctVolumeByRecognizedFrequency(float frequency) {
 		}
 		previous = point;
 	}
+}
+
+void AMicrophoneInput::SwitchMicrophoneMute() {
+	isMicrophoneMuted = !isMicrophoneMuted;
 }

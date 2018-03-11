@@ -99,8 +99,10 @@ float TempoDetector::calculateTempo()
 		return tempo;
 	} else {
 		int size = trackedOnsets.size();
-		if (trackedOnsets.size() < 4) {
+		if (trackedOnsets.size() < 3) {
 			return -1.f;
+		}else if (trackedOnsets.size() == 3) {
+			return -3.f;
 		}
 		float sum = 0;
 		for (auto frameNumber : trackedOnsets) {
